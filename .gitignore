@@ -1,3 +1,8 @@
+.tests
+doc/tags
+.repro
+*.log
+
 # Compiled Lua sources
 luac.out
 

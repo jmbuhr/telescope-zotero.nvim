@@ -1,6 +1,9 @@
-# telescope-zotero.nvim [WIP]
+# telescope-zotero.nvim
 
 List references from your local [Zotero](https://www.zotero.org/) library and add them to a bib file.
+
+> [!WARNING]
+> This doesn't do anything yet.
 
 ## Plan
 
