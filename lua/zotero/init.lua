@@ -1,29 +1,32 @@
 local finders = require 'telescope.finders'
 local pickers = require 'telescope.pickers'
+local previewers = require 'telescope.previewers'
 local conf = require('telescope.config').values
 local action_state = require 'telescope.actions.state'
 local actions = require 'telescope.actions'
+local database = require 'zotero.database'
 
 local M = {}
 
---- Main entry point or the picker
+M.previewer = function(opts)
+  opts = opts or {}
+  return previewers.new(opts)
+end
+
+--- Main entry point of the picker
 --- @param opts any
 M.picker = function(opts)
   opts = opts or {}
   pickers
     .new(opts, {
-      prompt_title = 'colors',
+      prompt_title = 'Zotoro library',
       finder = finders.new_table {
-        results = {
-          { 'red', '#ff0000' },
-          { 'green', '#00ff00' },
-          { 'blue', '#0000ff' },
-        },
+        results = database.get_items(),
         entry_maker = function(entry)
           return {
             value = entry,
-            display = entry[1],
-            ordinal = entry[1],
+            display = entry.title,
+            ordinal = entry.citekey,
           }
         end,
       },
@@ -32,13 +35,14 @@ M.picker = function(opts)
         actions.select_default:replace(function()
           actions.close(prompt_bufnr)
           local selection = action_state.get_selected_entry()
-          print(vim.inspect(selection))
-          vim.api.nvim_put({ selection.value[2] }, '', false, true)
+          vim.api.nvim_put({ '@' .. selection.value.citekey }, '', false, true)
         end)
         return true
       end,
     })
     :find()
 end
+
+-- M.picker()
 
 return M
