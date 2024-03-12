@@ -25,26 +25,36 @@ via this new plugin.
 
 ## Setup
 
-e.g. lazy.nvim plugin spec:
+Add to your telescope config, e.g. in lazy.nvim
 
 ```lua
 {
-    'jmbuhr/telescope-zotero',
+    'nvim-telescope/telescope.nvim',
     dependencies = {
-        { 'kkharji/sqlite.lua' },
+        -- your other telescope extensions
+        -- ...
+        {
+            'jmbuhr/telescope-zotero',
+            dependencies = {
+                { 'kkharji/sqlite.lua' },
+            },
+            -- default opts shown
+            opts = {
+                zotero_db_path = '~/Zotero/zotero.sqlite',
+                better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
+                quarto_integration = true,
+            }
+        },
     },
-    opts = {}
+    config = function()
+        local telescope = require 'telescope'
+        -- other telescope setup
+        -- ...
+        telescope.load_extension 'zotero'
+    end
 },
 ```
 
-## Default opts
-
-```lua
-{
-  zotero_db_path = '~/Zotero/zotero.sqlite',
-  better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
-}
-```
 
 ## Notes
 

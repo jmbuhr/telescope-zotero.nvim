@@ -30,20 +30,26 @@ local get_items = function()
 end
 
 local insert_entry = function(entry)
-  local bib_path = bib.locate_bib()
-  local bib_entry = bib.entry_to_bib_entry(entry)
   local citekey = entry.value.citekey
-  vim.api.nvim_put({ '@' .. citekey }, '', false, true)
 
-  -- check if is already in the bib file on
-  -- in a line that starts with @
-  local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-  for _, line in ipairs(lines) do
+  vim.api.nvim_put({ '@' .. citekey }, '', false, true)
+  if not M.config.quarto_integration then
+    return
+  end
+  local bib_path = bib.locate_bib()
+  if bib_path == nil then
+    vim.notify('Could not find a bibliography file', vim.log.levels.WARN)
+    return
+  end
+
+  -- check if is already in the bib filen
+  for line in io.lines(bib_path) do
     if string.match(line, '^@') and string.match(line, citekey) then
       return
     end
   end
 
+  local bib_entry = bib.entry_to_bib_entry(entry)
   -- otherwise append the entry to the bib file at bib_path
   local file = io.open(bib_path, 'a')
   if file == nil then
@@ -64,11 +70,16 @@ M.picker = function(opts)
       prompt_title = 'Zotoro library',
       finder = finders.new_table {
         results = get_items(),
-        entry_maker = function(entry)
+        entry_maker = function(pre_entry)
+          local creators = pre_entry.creators or {}
+          local author = creators[1] or {}
+          local last_name = author.lastName or ''
+          local year = pre_entry.year or pre_entry.date or ''
+          local display = string.format('%s (%s et al., %s)', pre_entry.title, last_name, year)
           return {
-            value = entry,
-            display = entry.title,
-            ordinal = entry.citekey,
+            value = pre_entry,
+            display = display,
+            ordinal = display,
           }
         end,
       },
@@ -76,8 +87,8 @@ M.picker = function(opts)
       attach_mappings = function(prompt_bufnr, map)
         actions.select_default:replace(function()
           actions.close(prompt_bufnr)
-          local selection = action_state.get_selected_entry()
-          insert_entry(selection)
+          local entry = action_state.get_selected_entry()
+          insert_entry(entry)
         end)
         return true
       end,

@@ -12,7 +12,7 @@ M.locate_bib = function()
     local location = string.match(line, [[bibliography:[ "']*([%w./%-\]+)["' ]*]])
     if location then
       M.cached_bib = location
-      return location
+      return M.cached_bib
     end
   end
   -- no bib locally defined
@@ -25,7 +25,7 @@ M.locate_bib = function()
       local location = string.match(line, 'bibliography: (%g+)')
       if location then
         M.cached_bib = location
-        return location
+        return M.cached_bib
       end
     end
   end
@@ -42,14 +42,19 @@ M.entry_to_bib_entry = function(entry)
   for k, v in pairs(item) do
     if k == 'creators' then
       bib_entry = bib_entry .. '  author = {'
+      local author = ''
       for _, creator in ipairs(v) do
-        bib_entry = bib_entry .. creator.lastName .. ', ' .. creator.firstName .. ' and '
+        author = author .. creator.lastName .. ', ' .. creator.firstName .. ' and '
       end
-      bib_entry = string.sub(bib_entry, 1, -6) .. '},\n'
+      -- remove trailing ' and '
+      author = string.sub(author, 1, -6)
+      bib_entry = bib_entry .. author .. '},\n'
     elseif k == 'citekey' then
       -- do nothing
+      -- already in the header
     elseif k == 'itemType' then
       -- do nothing
+      -- already in the header
     else
       bib_entry = bib_entry .. '  ' .. k .. ' = {' .. v .. '},\n'
     end
