@@ -8,9 +8,23 @@ local database = require 'zotero.database'
 
 local M = {}
 
-M.previewer = function(opts)
-  opts = opts or {}
-  return previewers.new(opts)
+local default_opts = {
+  zotero_db_path = '~/Zotero/zotero.sqlite',
+  better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
+}
+M.config = default_opts
+
+M.setup = function(opts)
+  M.config = vim.tbl_extend('force', default_opts, opts or {})
+end
+
+local get_items = function()
+  local success = database.connect(M.config)
+  if success then
+    return database.get_items()
+  else
+    return {}
+  end
 end
 
 --- Main entry point of the picker
@@ -21,7 +35,7 @@ M.picker = function(opts)
     .new(opts, {
       prompt_title = 'Zotoro library',
       finder = finders.new_table {
-        results = database.get_items(),
+        results = get_items(),
         entry_maker = function(entry)
           return {
             value = entry,
@@ -42,7 +56,5 @@ M.picker = function(opts)
     })
     :find()
 end
-
--- M.picker()
 
 return M
