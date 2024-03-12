@@ -20,8 +20,6 @@ via this new plugin.
 
 - [Zotero](https://www.zotero.org/)
 - [Better Bib Tex](https://retorque.re/zotero-better-bibtex/)
-- [sqlite3](https://www.sqlite.org/index.html)
-    - e.g. `sudo apt install sqlite3`
 
 ## Setup
 
