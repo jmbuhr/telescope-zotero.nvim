@@ -2,16 +2,6 @@
 
 List references from your local [Zotero](https://www.zotero.org/) library and add them to a bib file.
 
-> [!WARNING]
-> This isn't finished yet.
-
-## Plan
-
-- [x] open a telescope list with Zotero items.
-- [x] insert better-bibtex key into document on selection
-- [x] on selection, add the item to the `.bib` file configured in the yaml header of the current quarto document or project.
-- [ ] build a previewer for the items
-
 This does **not** provide autompletion in the document itself, as this is handled by https://github.com/jmbuhr/cmp-pandoc-references
 for entries already in `references.bib`. The intended workflow separates already used references from new ones imported from Zotero
 via this new plugin.
@@ -52,11 +42,6 @@ Add to your telescope config, e.g. in lazy.nvim
     end
 },
 ```
-
-
-## Notes
-
-<https://github.com/nvim-telescope/telescope.nvim/blob/master/developers.md#introduction>
 
 ## Inspiration
 
