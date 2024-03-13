@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
 
 jobs:
   docs:
@@ -31,20 +30,15 @@ jobs:
           push_options: "--force"
   release:
     name: release
-    needs:
-      - docs
     permissions:
       contents: write
       pull-requests: write
     runs-on: ubuntu-latest
-    outputs:
-      created: ${{ steps.release.outputs.release_created }}
     steps:
       - uses: google-github-actions/release-please-action@v4
         id: release
         with:
           release-type: simple
-          token: ${{ secrets.MY_RELEASE_PLEASE_TOKEN }}
       - uses: actions/checkout@v4
       - name: tag stable versions
         if: ${{ steps.release.outputs.release_created }}
