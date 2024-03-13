@@ -9,7 +9,7 @@ List references from your local [Zotero](https://www.zotero.org/) library and ad
 
 - [x] open a telescope list with Zotero items.
 - [x] insert better-bibtex key into document on selection
-- [ ] on selection, add the item to the `.bib` file configured in the yaml header of the current quarto document or project.
+- [x] on selection, add the item to the `.bib` file configured in the yaml header of the current quarto document or project.
 - [ ] build a previewer for the items
 
 This does **not** provide autompletion in the document itself, as this is handled by https://github.com/jmbuhr/cmp-pandoc-references
