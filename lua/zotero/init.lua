@@ -61,6 +61,11 @@ local insert_entry = function(entry)
   vim.print('wrote ' .. citekey .. ' to ' .. bib_path)
 end
 
+local function extract_year(date)
+  local year = date:match '(%d%d%d%d)'
+  return year
+end
+
 --- Main entry point of the picker
 --- @param opts any
 M.picker = function(opts)
@@ -75,6 +80,8 @@ M.picker = function(opts)
           local author = creators[1] or {}
           local last_name = author.lastName or ''
           local year = pre_entry.year or pre_entry.date or ''
+          pre_entry.year = extract_year(year)
+
           local display = string.format('%s (%s et al., %s)', pre_entry.title, last_name, year)
           return {
             value = pre_entry,
