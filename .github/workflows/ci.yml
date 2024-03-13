@@ -15,7 +15,7 @@ jobs:
         uses: kdheepak/panvimdoc@main
         with:
           vimdoc: telescope-zotero.nvim
-          version: "Neovim >= 0.9.0"
+          version: "Neovim >= 0.9.5"
           demojify: false
           treesitter: true
       - name: Push changes
@@ -31,7 +31,7 @@ jobs:
       - docs
     runs-on: ubuntu-latest
     steps:
-      - uses: google-github-actions/release-please-action@v3
+      - uses: google-github-actions/release-please-action@v4
         id: release
         with:
           release-type: simple
