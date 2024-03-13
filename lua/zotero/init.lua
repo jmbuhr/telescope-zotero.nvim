@@ -80,10 +80,16 @@ M.picker = function(opts)
             value = pre_entry,
             display = display,
             ordinal = display,
+            preview_command = function(entry, bufnr)
+              local bib_entry = bib.entry_to_bib_entry(entry)
+              local lines = vim.split(bib_entry, '\n')
+              vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+            end,
           }
         end,
       },
       sorter = conf.generic_sorter(opts),
+      previewer = previewers.display_content.new(opts),
       attach_mappings = function(prompt_bufnr, map)
         actions.select_default:replace(function()
           actions.close(prompt_bufnr)
