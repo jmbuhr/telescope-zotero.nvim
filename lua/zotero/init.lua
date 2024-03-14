@@ -91,6 +91,7 @@ M.picker = function(opts)
               local bib_entry = bib.entry_to_bib_entry(entry)
               local lines = vim.split(bib_entry, '\n')
               vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+              vim.api.nvim_set_option_value('filetype', 'bibtex', { buf = bufnr })
             end,
           }
         end,
