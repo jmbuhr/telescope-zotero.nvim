@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.0.0...v1.1.0) (2024-03-14)
+
+
+### Features
+
+* highlight preview as bibtext ([1388899](https://github.com/jmbuhr/telescope-zotero.nvim/commit/138889918b9970ee7dab952c63dbb65ad9edfd43))
+
 ## 1.0.0 (2024-03-13)
 
 
