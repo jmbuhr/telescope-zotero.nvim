@@ -12,7 +12,35 @@ local M = {}
 local default_opts = {
   zotero_db_path = '~/Zotero/zotero.sqlite',
   better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
-  quarto_integration = true,
+  -- specify options for different filetypes
+  -- locate_bib can be a string or a function
+  ft = {
+    quarto = {
+      insert_key_formatter = function(citekey)
+        return '@' .. citekey
+      end,
+      locate_bib = bib.locate_quarto_bib,
+    },
+    tex = {
+      insert_key_formatter = function(citekey)
+        return '\\cite{' .. citekey .. '}'
+      end,
+      locate_bib = bib.locate_tex_bib,
+    },
+    plaintex = {
+      insert_key_formatter = function(citekey)
+        return '\\cite{' .. citekey .. '}'
+      end,
+      locate_bib = bib.locate_tex_bib,
+    },
+    -- fallback for unlisted filetypes
+    default = {
+      insert_key_formatter = function(citekey)
+        return '@' .. citekey
+      end,
+      locate_bib = bib.locate_quarto_bib,
+    },
+  },
 }
 M.config = default_opts
 
@@ -29,18 +57,21 @@ local get_items = function()
   end
 end
 
-local insert_entry = function(entry)
+local insert_entry = function(entry, insert_key_fn, locate_bib_fn)
   local citekey = entry.value.citekey
-
-  vim.api.nvim_put({ '@' .. citekey }, '', false, true)
-  if not M.config.quarto_integration then
-    return
+  local insert_key = insert_key_fn(citekey)
+  vim.api.nvim_put({ insert_key }, '', false, true)
+  local bib_path = nil
+  if type(locate_bib_fn) == 'string' then
+    bib_path = locate_bib_fn
+  elseif type(locate_bib_fn) == 'function' then
+    bib_path = locate_bib_fn()
   end
-  local bib_path = bib.locate_bib()
   if bib_path == nil then
-    vim.notify('Could not find a bibliography file', vim.log.levels.WARN)
+    vim.notify_once('Could not find a bibliography file', vim.log.levels.WARN)
     return
   end
+  bib_path = vim.fn.expand(bib_path)
 
   -- check if is already in the bib filen
   for line in io.lines(bib_path) do
@@ -70,6 +101,7 @@ end
 --- @param opts any
 M.picker = function(opts)
   opts = opts or {}
+  local ft_options = M.config.ft[vim.bo.filetype] or M.config.ft.default
   pickers
     .new(opts, {
       prompt_title = 'Zotoro library',
@@ -102,7 +134,7 @@ M.picker = function(opts)
         actions.select_default:replace(function()
           actions.close(prompt_bufnr)
           local entry = action_state.get_selected_entry()
-          insert_entry(entry)
+          insert_entry(entry, ft_options.insert_key_formatter, ft_options.locate_bib)
         end)
         return true
       end,
