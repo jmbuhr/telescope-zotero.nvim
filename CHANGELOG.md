@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.1.0...v1.2.0) (2024-03-16)
+
+
+### Features
+
+* allow bib location config and add tex presets ([7d2e731](https://github.com/jmbuhr/telescope-zotero.nvim/commit/7d2e73151e2ee3fbfe5e0eaa29f7b80c9620a077)), closes [#5](https://github.com/jmbuhr/telescope-zotero.nvim/issues/5)
+
 ## [1.1.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.0.0...v1.1.0) (2024-03-14)
 
 
