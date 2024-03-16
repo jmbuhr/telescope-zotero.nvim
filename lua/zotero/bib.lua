@@ -1,18 +1,21 @@
 -- (Crudely) Locates the bibliography
 
 local M = {}
-M.cached_bib = nil
 
-M.locate_bib = function()
-  if M.cached_bib then
-    return M.cached_bib
+M.quarto = {}
+M.tex = {}
+M['quarto.cached_bib'] = nil
+
+M.locate_quarto_bib = function()
+  if M['quarto.cached_bib'] then
+    return M['quarto.cached_bib']
   end
   local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   for _, line in ipairs(lines) do
-    local location = string.match(line, [[bibliography:[ "']*([%w./%-\]+)["' ]*]])
+    local location = string.match(line, [[bibliography:[ "']*(.+)["' ]*]])
     if location then
-      M.cached_bib = location
-      return M.cached_bib
+      M['quarto.cached_bib'] = location
+      return M['quarto.cached_bib']
     end
   end
   -- no bib locally defined
@@ -22,11 +25,21 @@ M.locate_bib = function()
   if root then
     local file = root .. '/_quarto.yml'
     for line in io.lines(file) do
-      local location = string.match(line, 'bibliography: (%g+)')
+      local location = string.match(line, [[bibliography:[ "']*(.+)["' ]*]])
       if location then
-        M.cached_bib = location
-        return M.cached_bib
+        M['quarto.cached_bib'] = location
+        return M['quarto.cached_bib']
       end
+    end
+  end
+end
+
+M.locate_tex_bib = function()
+  local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  for _, line in ipairs(lines) do
+    local location = string.match(line, [[\bibliography{[ "']*([^'"\{\}]+)["' ]*}]])
+    if location then
+      return location
     end
   end
 end
