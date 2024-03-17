@@ -72,6 +72,12 @@ Add to your telescope config, e.g. in lazy.nvim
 },
 ```
 
+## Demo
+
+Video (https://www.youtube.com/watch?v=_o5SkTW67do):
+
+[![Link to a YouTube video explaining the telescope-zotero extension](https://img.youtube.com/vi/_o5SkTW67do/0.jpg)](https://www.youtube.com/watch?v=_o5SkTW67do)
+
 ## Inspiration
 
 This extension is inspired by the following plugins that all do an amazing job, but not quite what I need.
