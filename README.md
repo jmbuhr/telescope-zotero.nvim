@@ -22,7 +22,7 @@ Add to your telescope config, e.g. in lazy.nvim
     -- your other telescope extensions
     -- ...
     {
-      'jmbuhr/telescope-zotero',
+      'jmbuhr/telescope-zotero.nvim',
       dependencies = {
         { 'kkharji/sqlite.lua' },
       },
