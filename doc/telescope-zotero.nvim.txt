@@ -1,4 +1,4 @@
-*telescope-zotero.nvim.txt*   For Neovim >= 0.9.5   Last change: 2024 March 17
+*telescope-zotero.nvim.txt*   For Neovim >= 0.9.5   Last change: 2024 March 23
 
 ==============================================================================
 Table of Contents                    *telescope-zotero.nvim-table-of-contents*
@@ -38,7 +38,7 @@ Add to your telescope config, e.g. in lazy.nvim
         -- your other telescope extensions
         -- ...
         {
-          'jmbuhr/telescope-zotero',
+          'jmbuhr/telescope-zotero.nvim',
           dependencies = {
             { 'kkharji/sqlite.lua' },
           },
