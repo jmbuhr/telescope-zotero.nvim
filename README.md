@@ -27,6 +27,8 @@ Add to your telescope config, e.g. in lazy.nvim
         { 'kkharji/sqlite.lua' },
       },
       -- default opts shown
+      -- i.e. if you want to use them
+      -- you can just set opts = {}
       opts = {
         zotero_db_path = '~/Zotero/zotero.sqlite',
         better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
@@ -37,31 +39,30 @@ Add to your telescope config, e.g. in lazy.nvim
             insert_key_formatter = function(citekey)
               return '@' .. citekey
             end,
-            locate_bib = bib.locate_quarto_bib,
+            locate_bib = require'zotero.bib'.locate_quarto_bib,
           },
           tex = {
             insert_key_formatter = function(citekey)
               return '\\cite{' .. citekey .. '}'
             end,
-            locate_bib = bib.locate_tex_bib,
+            locate_bib = require'zotero.bib'.locate_tex_bib,
           },
           plaintex = {
             insert_key_formatter = function(citekey)
               return '\\cite{' .. citekey .. '}'
             end,
-            locate_bib = bib.locate_tex_bib,
+            locate_bib = require'zotero.bib'.locate_tex_bib,
           },
           -- fallback for unlisted filetypes
           default = {
             insert_key_formatter = function(citekey)
               return '@' .. citekey
             end,
-            locate_bib = bib.locate_quarto_bib,
+            locate_bib = require'zotero.bib'.locate_quarto_bib,
           },
         },
-
-            }
-        },
+      }
+    },
     },
     config = function()
         local telescope = require 'telescope'
