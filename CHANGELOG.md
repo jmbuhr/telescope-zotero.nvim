@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.2.0...v1.2.1) (2024-03-23)
+
+
+### Bug Fixes
+
+* correct plugin url in readme. refs [#5](https://github.com/jmbuhr/telescope-zotero.nvim/issues/5) ([b616a5f](https://github.com/jmbuhr/telescope-zotero.nvim/commit/b616a5f1d2671618ed830090e9f9e39bf2ec722b))
+
 ## [1.2.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.1.0...v1.2.0) (2024-03-16)
 
 
