@@ -26,52 +26,25 @@ Add to your telescope config, e.g. in lazy.nvim
       dependencies = {
         { 'kkharji/sqlite.lua' },
       },
-      -- default opts shown
-      -- i.e. if you want to use them
-      -- you can just set opts = {}
-      opts = {
-        zotero_db_path = '~/Zotero/zotero.sqlite',
-        better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
-        -- specify options for different filetypes
-        -- locate_bib can be a string or a function
-        ft = {
-          quarto = {
-            insert_key_formatter = function(citekey)
-              return '@' .. citekey
-            end,
-            locate_bib = require'zotero.bib'.locate_quarto_bib,
-          },
-          tex = {
-            insert_key_formatter = function(citekey)
-              return '\\cite{' .. citekey .. '}'
-            end,
-            locate_bib = require'zotero.bib'.locate_tex_bib,
-          },
-          plaintex = {
-            insert_key_formatter = function(citekey)
-              return '\\cite{' .. citekey .. '}'
-            end,
-            locate_bib = require'zotero.bib'.locate_tex_bib,
-          },
-          -- fallback for unlisted filetypes
-          default = {
-            insert_key_formatter = function(citekey)
-              return '@' .. citekey
-            end,
-            locate_bib = require'zotero.bib'.locate_quarto_bib,
-          },
-        },
-      }
+      -- options:
+      -- to use the default opts:
+      opts = {},
+      -- to configure manually:
+      -- config = function
+      --   require'zotero'.setup{ <your options> }
+      -- end,
     },
-    },
-    config = function()
-        local telescope = require 'telescope'
-        -- other telescope setup
-        -- ...
-        telescope.load_extension 'zotero'
-    end
+  },
+  config = function()
+    local telescope = require 'telescope'
+    -- other telescope setup
+    -- ...
+    telescope.load_extension 'zotero'
+  end
 },
 ```
+
+Default options: <https://github.com/jmbuhr/telescope-zotero.nvim/blob/main/lua/zotero/init.lua#L12>
 
 ## Demo
 
