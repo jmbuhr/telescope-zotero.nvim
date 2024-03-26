@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.2.1...v1.2.2) (2024-03-26)
+
+
+### Bug Fixes
+
+* remove database connection caching ([695ae60](https://github.com/jmbuhr/telescope-zotero.nvim/commit/695ae60d0f13dcce90bb3e358a6f833fd88e8b52))
+
 ## [1.2.1](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.2.0...v1.2.1) (2024-03-23)
 
 
