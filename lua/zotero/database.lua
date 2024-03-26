@@ -13,17 +13,12 @@ local function connect(path)
   end
 end
 
-M.connected = false
 M.connect = function(opts)
-  if M.connected then
-    return true
-  end
   M.db = connect(opts.zotero_db_path)
   M.bbt = connect(opts.better_bibtex_db_path)
   if M.db == nil or M.bbt == nil then
     return false
   end
-  M.connected = true
   return true
 end
 
