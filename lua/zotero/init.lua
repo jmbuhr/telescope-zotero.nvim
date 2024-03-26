@@ -104,7 +104,7 @@ M.picker = function(opts)
   local ft_options = M.config.ft[vim.bo.filetype] or M.config.ft.default
   pickers
     .new(opts, {
-      prompt_title = 'Zotoro library',
+      prompt_title = 'Zotero library',
       finder = finders.new_table {
         results = get_items(),
         entry_maker = function(pre_entry)
