@@ -94,7 +94,42 @@ end
 
 local function extract_year(date)
   local year = date:match '(%d%d%d%d)'
-  return year
+  if year ~= nil then
+    return year
+  else
+    return 'NA'
+  end
+end
+
+local function make_entry(pre_entry)
+  local creators = pre_entry.creators or {}
+  local author = creators[1] or {}
+  local last_name = author.lastName or 'NA'
+  local year = pre_entry.year or pre_entry.date or 'NA'
+  year = extract_year(year)
+  pre_entry.year = year
+
+  local display_value = string.format('%s, %s) %s', last_name, year, pre_entry.title)
+  local highlight = {
+    { { 0, #last_name + #year + 3 }, 'Comment' },
+    { { #last_name + 2, #year + #last_name + 2 }, '@markup.underline' },
+  }
+
+  local function make_display(_)
+    return display_value, highlight
+  end
+
+  return {
+    value = pre_entry,
+    display = make_display,
+    ordinal = display_value,
+    preview_command = function(entry, bufnr)
+      local bib_entry = bib.entry_to_bib_entry(entry)
+      local lines = vim.split(bib_entry, '\n')
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+      vim.api.nvim_set_option_value('filetype', 'bibtex', { buf = bufnr })
+    end,
+  }
 end
 
 --- Main entry point of the picker
@@ -107,26 +142,7 @@ M.picker = function(opts)
       prompt_title = 'Zotero library',
       finder = finders.new_table {
         results = get_items(),
-        entry_maker = function(pre_entry)
-          local creators = pre_entry.creators or {}
-          local author = creators[1] or {}
-          local last_name = author.lastName or ''
-          local year = pre_entry.year or pre_entry.date or ''
-          pre_entry.year = extract_year(year)
-
-          local display = string.format('%s (%s et al., %s)', pre_entry.title, last_name, year)
-          return {
-            value = pre_entry,
-            display = display,
-            ordinal = display,
-            preview_command = function(entry, bufnr)
-              local bib_entry = bib.entry_to_bib_entry(entry)
-              local lines = vim.split(bib_entry, '\n')
-              vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-              vim.api.nvim_set_option_value('filetype', 'bibtex', { buf = bufnr })
-            end,
-          }
-        end,
+        entry_maker = make_entry,
       },
       sorter = conf.generic_sorter(opts),
       previewer = previewers.display_content.new(opts),
