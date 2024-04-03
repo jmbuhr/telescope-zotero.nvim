@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.2.2...v1.3.0) (2024-04-03)
+
+
+### Features
+
+* highlight telescope list ([a10bf1c](https://github.com/jmbuhr/telescope-zotero.nvim/commit/a10bf1cbb47474318b457b00869ddf604a1c2291))
+
 ## [1.2.2](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.2.1...v1.2.2) (2024-03-26)
 
 
