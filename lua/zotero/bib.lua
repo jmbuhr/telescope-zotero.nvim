@@ -39,7 +39,7 @@ M.locate_tex_bib = function()
   for _, line in ipairs(lines) do
     local location = string.match(line, [[\bibliography{[ "']*([^'"\{\}]+)["' ]*}]])
     if location then
-      return location
+      return location .. '.bib'
     end
   end
 end
