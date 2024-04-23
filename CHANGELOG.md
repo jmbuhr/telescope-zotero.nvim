@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.3.0...v1.3.1) (2024-04-23)
+
+
+### Bug Fixes
+
+* add implicit `.bib` to filename of bibliography for tex/bibtex ([790be31](https://github.com/jmbuhr/telescope-zotero.nvim/commit/790be315fa24366148606a390091cdc2b8491ff1))
+
 ## [1.3.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.2.2...v1.3.0) (2024-04-03)
 
 
