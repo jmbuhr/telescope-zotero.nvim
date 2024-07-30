@@ -67,8 +67,20 @@ local function open_pdf(attachment)
     return
   end
 
-  if vim.fn.filereadable(file_path) == 1 then
-    vim.fn.system('xdg-open ' .. vim.fn.shellescape(file_path))
+    if vim.fn.filereadable(file_path) == 1 then
+    local open_cmd
+    if vim.fn.has 'win32' == 1 or vim.fn.has 'win64' == 1 then
+      open_cmd = 'start'
+    elseif vim.fn.has 'macunix' == 1 then
+      open_cmd = 'open'
+    elseif vim.fn.has 'unix' == 1 then
+      open_cmd = 'xdg-open'
+    else
+      vim.notify('Unsupported OS', vim.log.levels.ERROR)
+      return
+    end
+
+    vim.fn.system(open_cmd .. ' ' .. vim.fn.shellescape(file_path))
   else
     vim.notify('File not found: ' .. file_path, vim.log.levels.ERROR)
   end
