@@ -34,7 +34,10 @@ local query_items = [[
       DISTINCT items.key, items.itemID,
       fields.fieldName,
       parentItemDataValues.value,
-      itemTypes.typeName
+      itemTypes.typeName,
+      itemAttachments.path AS attachment_path,
+      itemAttachments.contentType AS attachment_content_type,
+      itemAttachments.linkMode AS attachment_link_mode
     FROM
       items
       INNER JOIN itemData ON itemData.itemID = items.itemID
@@ -43,7 +46,8 @@ local query_items = [[
       INNER JOIN itemDataValues as parentItemDataValues ON parentItemDataValues.valueID = parentItemData.valueID
       INNER JOIN fields ON fields.fieldID = parentItemData.fieldID
       INNER JOIN itemTypes ON itemTypes.itemTypeID = items.itemTypeID
-    ]]
+      LEFT JOIN itemAttachments ON items.itemID = itemAttachments.parentItemID AND itemAttachments.contentType = 'application/pdf'
+]]
 
 local query_creators = [[
     SELECT
@@ -83,6 +87,13 @@ function M.get_items()
     end
     raw_items[v.key][v.fieldName] = v.value
     raw_items[v.key].itemType = v.typeName
+    if v.attachment_path then
+      raw_items[v.key].attachment = {
+        path = v.attachment_path,
+        content_type = v.attachment_content_type,
+        link_mode = v.attachment_link_mode,
+      }
+    end
   end
   for _, v in pairs(sql_creators) do
     if raw_items[v.key] ~= nil then

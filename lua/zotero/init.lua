@@ -12,6 +12,7 @@ local M = {}
 local default_opts = {
   zotero_db_path = '~/Zotero/zotero.sqlite',
   better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
+  -- zotero_storage_path = "~/Zotero/storage",  Add this line
   -- specify options for different filetypes
   -- locate_bib can be a string or a function
   ft = {
@@ -46,6 +47,31 @@ M.config = default_opts
 
 M.setup = function(opts)
   M.config = vim.tbl_extend('force', default_opts, opts or {})
+end
+
+local function open_pdf(attachment)
+  if not attachment then
+    vim.notify('No PDF attached to this entry', vim.log.levels.WARN)
+    return
+  end
+
+  local file_path = attachment.path
+  if attachment.link_mode == 2 then -- 2 typically means linked file
+    -- Use the path as is for linked files
+  elseif attachment.link_mode == 1 then -- 1 typically means stored file
+    -- Construct the full path for stored files
+    local zotero_storage = vim.fn.expand(M.config.zotero_storage_path)
+    file_path = zotero_storage .. '/' .. file_path
+  else
+    vim.notify('Unknown attachment type', vim.log.levels.WARN)
+    return
+  end
+
+  if vim.fn.filereadable(file_path) == 1 then
+    vim.fn.system('xdg-open ' .. vim.fn.shellescape(file_path))
+  else
+    vim.notify('File not found: ' .. file_path, vim.log.levels.ERROR)
+  end
 end
 
 local get_items = function()
@@ -151,6 +177,14 @@ M.picker = function(opts)
           actions.close(prompt_bufnr)
           local entry = action_state.get_selected_entry()
           insert_entry(entry, ft_options.insert_key_formatter, ft_options.locate_bib)
+        end)
+        map('i', '<C-o>', function()
+          local entry = action_state.get_selected_entry()
+          open_pdf(entry.value.attachment)
+        end)
+        map('n', 'o', function()
+          local entry = action_state.get_selected_entry()
+          open_pdf(entry.value.attachment)
         end)
         return true
       end,
