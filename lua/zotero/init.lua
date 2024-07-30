@@ -67,7 +67,7 @@ local function open_pdf(attachment)
     return
   end
 
-    if vim.fn.filereadable(file_path) == 1 then
+    if file_path ~= '' then
     local open_cmd
     if vim.fn.has 'win32' == 1 or vim.fn.has 'win64' == 1 then
       open_cmd = 'start'
