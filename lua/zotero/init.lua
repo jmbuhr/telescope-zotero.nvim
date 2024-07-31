@@ -49,40 +49,76 @@ M.setup = function(opts)
   M.config = vim.tbl_extend('force', default_opts, opts or {})
 end
 
-local function open_pdf(attachment)
-  if not attachment then
-    vim.notify('No PDF attached to this entry', vim.log.levels.WARN)
-    return
+local function get_attachment_options(item)
+  local options = {}
+  if item.attachment and item.attachment.path then
+    table.insert(options, { type = 'pdf', path = item.attachment.path, link_mode = item.attachment.link_mode })
   end
-
-  local file_path = attachment.path
-  if attachment.link_mode == 2 then -- 2 typically means linked file
-    -- Use the path as is for linked files
-  elseif attachment.link_mode == 1 then -- 1 typically means stored file
-    -- Construct the full path for stored files
-    local zotero_storage = vim.fn.expand(M.config.zotero_storage_path)
-    file_path = zotero_storage .. '/' .. file_path
-  else
-    vim.notify('Unknown attachment type', vim.log.levels.WARN)
-    return
+  if item.DOI then
+    table.insert(options, { type = 'doi', url = 'https://doi.org/' .. item.DOI })
   end
+  return options
+end
 
-  -- if vim.fn.filereadable(file_path) == 1 then
-  if file_path ~= '' then
-    local open_cmd
-    if vim.fn.has 'win32' == 1 or vim.fn.has 'win64' == 1 then
-      open_cmd = 'start'
-    elseif vim.fn.has 'macunix' == 1 then
-      open_cmd = 'open'
-    elseif vim.fn.has 'unix' == 1 then
-      open_cmd = 'xdg-open'
-    else
-      vim.notify('Unsupported OS', vim.log.levels.ERROR)
-      return
+local function open_url(url)
+  local open_cmd
+  if vim.fn.has 'win32' == 1 then
+    open_cmd = 'start'
+  elseif vim.fn.has 'macunix' == 1 then
+    open_cmd = 'open'
+  else -- Assume Unix
+    open_cmd = 'xdg-open'
+  end
+  vim.fn.system(open_cmd .. ' ' .. vim.fn.shellescape(url))
+end
+
+local function open_attachment(item)
+  local options = get_attachment_options(item)
+  if #options == 0 then
+    vim.notify('No PDF or DOI available for this entry', vim.log.levels.WARN)
+    return
+  elseif #options == 1 then
+    -- If only one option, open it directly
+    local option = options[1]
+    if option.type == 'pdf' then
+      local file_path = option.path
+      if option.link_mode == 1 then -- 1 typically means stored file
+        local zotero_storage = vim.fn.expand(M.config.zotero_storage_path)
+        file_path = zotero_storage .. '/' .. file_path
+      end
+      if file_path ~= 0 then
+        open_url(file_path)
+      else
+        vim.notify('File not found: ' .. file_path, vim.log.levels.ERROR)
+      end
+    else -- DOI
+      open_url(option.url)
     end
-    vim.fn.system(open_cmd .. ' ' .. vim.fn.shellescape(file_path))
   else
-    vim.notify('File not found: ' .. file_path, vim.log.levels.ERROR)
+    -- If multiple options, use vim.ui.select to let the user choose
+    vim.ui.select(options, {
+      prompt = 'Choose attachment to open:',
+      format_item = function(item)
+        return item.type == 'pdf' and 'Open PDF' or 'Open DOI link'
+      end,
+    }, function(choice)
+      if choice then
+        if choice.type == 'pdf' then
+          local file_path = choice.path
+          if choice.link_mode == 1 then -- 1 typically means stored file
+            local zotero_storage = vim.fn.expand(M.config.zotero_storage_path)
+            file_path = zotero_storage .. '/' .. file_path
+          end
+          if file_path ~= 0 then
+            open_url(file_path)
+          else
+            vim.notify('File not found: ' .. file_path, vim.log.levels.ERROR)
+          end
+        else -- DOI
+          open_url(choice.url)
+        end
+      end
+    end)
   end
 end
 
@@ -147,19 +183,25 @@ local function make_entry(pre_entry)
   year = extract_year(year)
   pre_entry.year = year
 
-  local pdf_icon = pre_entry.attachment and pre_entry.attachment.path and ' ' or '  '
-  local display_value = string.format('%s%s, %s) %s', pdf_icon, last_name, year, pre_entry.title)
-
+  local options = get_attachment_options(pre_entry)
+  local icon
+  if #options > 1 then
+    icon = ' ' -- Icon for both PDF and DOI available
+  elseif #options == 1 then
+    icon = options[1].type == 'pdf' and '󰈙 ' or '󰖟 '
+  else
+    icon = '  ' -- Blank space
+  end
+  local display_value = string.format('%s%s, %s) %s', icon, last_name, year, pre_entry.title)
   local highlight = {
-    { { 0, #pdf_icon }, 'SpecialChar' },
-    { { #pdf_icon, #pdf_icon + #last_name + #year + 3 }, 'Comment' },
-    { { #pdf_icon + #last_name + 2, #pdf_icon + #year + #last_name + 2 }, '@markup.underline' },
+    { { 0, #icon }, 'SpecialChar' },
+    { { #icon, #icon + #last_name + #year + 3 }, 'Comment' },
+    { { #icon + #last_name + 2, #icon + #year + #last_name + 2 }, '@markup.underline' },
   }
 
   local function make_display(_)
     return display_value, highlight
   end
-
   return {
     value = pre_entry,
     display = make_display,
@@ -193,13 +235,14 @@ M.picker = function(opts)
           local entry = action_state.get_selected_entry()
           insert_entry(entry, ft_options.insert_key_formatter, ft_options.locate_bib)
         end)
+        -- Update the mapping to open PDF or DOI
         map('i', '<C-o>', function()
           local entry = action_state.get_selected_entry()
-          open_pdf(entry.value.attachment)
+          open_attachment(entry.value)
         end)
         map('n', 'o', function()
           local entry = action_state.get_selected_entry()
-          open_pdf(entry.value.attachment)
+          open_attachment(entry.value)
         end)
         return true
       end,
