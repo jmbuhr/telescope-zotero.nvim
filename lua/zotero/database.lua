@@ -83,23 +83,26 @@ function M.get_items()
 
   for _, v in pairs(sql_items) do
     if raw_items[v.key] == nil then
-      raw_items[v.key] = { creators = {} }
+      raw_items[v.key] = { creators = {}, attachment = {} }
     end
     raw_items[v.key][v.fieldName] = v.value
     raw_items[v.key].itemType = v.typeName
     if v.attachment_path then
-      raw_items[v.key].attachment = {
-        path = v.attachment_path,
-        content_type = v.attachment_content_type,
-        link_mode = v.attachment_link_mode,
-      }
+      raw_items[v.key].attachment.path = v.attachment_path
+      raw_items[v.key].attachment.content_type = v.attachment_content_type
+      raw_items[v.key].attachment.link_mode = v.attachment_link_mode
+    end
+    if v.fieldName == 'DOI' then
+      raw_items[v.key].DOI = v.value
     end
   end
+
   for _, v in pairs(sql_creators) do
     if raw_items[v.key] ~= nil then
       raw_items[v.key].creators[v.orderIndex + 1] = { firstName = v.firstName, lastName = v.lastName, creatorType = v.creatorType }
     end
   end
+
   for key, item in pairs(raw_items) do
     local citekey = bbt_citekeys[key]
     if citekey ~= nil then
