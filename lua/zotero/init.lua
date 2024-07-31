@@ -67,7 +67,8 @@ local function open_pdf(attachment)
     return
   end
 
-    if file_path ~= '' then
+  -- if vim.fn.filereadable(file_path) == 1 then
+  if file_path ~= '' then
     local open_cmd
     if vim.fn.has 'win32' == 1 or vim.fn.has 'win64' == 1 then
       open_cmd = 'start'
@@ -79,7 +80,6 @@ local function open_pdf(attachment)
       vim.notify('Unsupported OS', vim.log.levels.ERROR)
       return
     end
-
     vim.fn.system(open_cmd .. ' ' .. vim.fn.shellescape(file_path))
   else
     vim.notify('File not found: ' .. file_path, vim.log.levels.ERROR)
@@ -147,10 +147,13 @@ local function make_entry(pre_entry)
   year = extract_year(year)
   pre_entry.year = year
 
-  local display_value = string.format('%s, %s) %s', last_name, year, pre_entry.title)
+  local pdf_icon = pre_entry.attachment and pre_entry.attachment.path and ' ' or '  '
+  local display_value = string.format('%s%s, %s) %s', pdf_icon, last_name, year, pre_entry.title)
+
   local highlight = {
-    { { 0, #last_name + #year + 3 }, 'Comment' },
-    { { #last_name + 2, #year + #last_name + 2 }, '@markup.underline' },
+    { { 0, #pdf_icon }, 'SpecialChar' },
+    { { #pdf_icon, #pdf_icon + #last_name + #year + 3 }, 'Comment' },
+    { { #pdf_icon + #last_name + 2, #pdf_icon + #year + #last_name + 2 }, '@markup.underline' },
   }
 
   local function make_display(_)
