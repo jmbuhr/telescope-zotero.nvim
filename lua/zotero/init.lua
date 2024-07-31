@@ -12,7 +12,7 @@ local M = {}
 local default_opts = {
   zotero_db_path = '~/Zotero/zotero.sqlite',
   better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
-  -- zotero_storage_path = "~/Zotero/storage",  Add this line
+  zotero_storage_path = '~/Zotero/storage',
   -- specify options for different filetypes
   -- locate_bib can be a string or a function
   ft = {
@@ -57,6 +57,8 @@ local function get_attachment_options(item)
   if item.DOI then
     table.insert(options, { type = 'doi', url = 'https://doi.org/' .. item.DOI })
   end
+  -- Add option to open in Zotero
+  table.insert(options, { type = 'zotero', key = item.key })
   return options
 end
 
@@ -72,17 +74,17 @@ local function open_url(url)
   vim.fn.system(open_cmd .. ' ' .. vim.fn.shellescape(url))
 end
 
+local function open_in_zotero(item_key)
+  local zotero_url = 'zotero://select/library/items/' .. item_key
+  open_url(zotero_url)
+end
+
 local function open_attachment(item)
   local options = get_attachment_options(item)
-  if #options == 0 then
-    vim.notify('No PDF or DOI available for this entry', vim.log.levels.WARN)
-    return
-  elseif #options == 1 then
-    -- If only one option, open it directly
-    local option = options[1]
-    if option.type == 'pdf' then
-      local file_path = option.path
-      if option.link_mode == 1 then -- 1 typically means stored file
+  local function execute_option(choice)
+    if choice.type == 'pdf' then
+      local file_path = choice.path
+      if choice.link_mode == 1 then -- 1 typically means stored file
         local zotero_storage = vim.fn.expand(M.config.zotero_storage_path)
         file_path = zotero_storage .. '/' .. file_path
       end
@@ -91,34 +93,37 @@ local function open_attachment(item)
       else
         vim.notify('File not found: ' .. file_path, vim.log.levels.ERROR)
       end
-    else -- DOI
-      open_url(option.url)
+    elseif choice.type == 'doi' then
+      open_url(choice.url)
+    elseif choice.type == 'zotero' then
+      open_in_zotero(choice.key)
     end
-  else
-    -- If multiple options, use vim.ui.select to let the user choose
+  end
+
+  if #options == 1 then
+    -- If there's only one option, execute it immediately
+    execute_option(options[1])
+  elseif #options > 1 then
+    -- If there are multiple options, use ui.select
     vim.ui.select(options, {
-      prompt = 'Choose attachment to open:',
-      format_item = function(item)
-        return item.type == 'pdf' and 'Open PDF' or 'Open DOI link'
+      prompt = 'Choose action:',
+      format_item = function(option)
+        if option.type == 'pdf' then
+          return 'Open PDF'
+        elseif option.type == 'doi' then
+          return 'Open DOI link'
+        elseif option.type == 'zotero' then
+          return 'Open in Zotero'
+        end
       end,
     }, function(choice)
       if choice then
-        if choice.type == 'pdf' then
-          local file_path = choice.path
-          if choice.link_mode == 1 then -- 1 typically means stored file
-            local zotero_storage = vim.fn.expand(M.config.zotero_storage_path)
-            file_path = zotero_storage .. '/' .. file_path
-          end
-          if file_path ~= 0 then
-            open_url(file_path)
-          else
-            vim.notify('File not found: ' .. file_path, vim.log.levels.ERROR)
-          end
-        else -- DOI
-          open_url(choice.url)
-        end
+        execute_option(choice)
       end
     end)
+  else
+    -- If there are no options, notify the user
+    vim.notify('No attachments or links available for this item', vim.log.levels.INFO)
   end
 end
 
@@ -147,7 +152,7 @@ local insert_entry = function(entry, insert_key_fn, locate_bib_fn)
   end
   bib_path = vim.fn.expand(bib_path)
 
-  -- check if is already in the bib filen
+  -- check if is already in the bib file
   for line in io.lines(bib_path) do
     if string.match(line, '^@') and string.match(line, citekey) then
       return
@@ -184,13 +189,13 @@ local function make_entry(pre_entry)
   pre_entry.year = year
 
   local options = get_attachment_options(pre_entry)
-  local icon
-  if #options > 1 then
-    icon = ' ' -- Icon for both PDF and DOI available
-  elseif #options == 1 then
+  local icon = ''
+  if #options > 2 then
+    icon = ' ' -- Icon for both PDF and DOI available
+  elseif #options == 2 then
     icon = options[1].type == 'pdf' and '󰈙 ' or '󰖟 '
   else
-    icon = '  ' -- Blank space
+    icon = ' ' -- Two spaces for blank icon
   end
   local display_value = string.format('%s%s, %s) %s', icon, last_name, year, pre_entry.title)
   local highlight = {

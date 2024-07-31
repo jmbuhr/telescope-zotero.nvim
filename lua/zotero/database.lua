@@ -75,7 +75,6 @@ function M.get_items()
     vim.notify_once('[zotero] could not query database.', vim.log.levels.WARN, {})
     return {}
   end
-
   local bbt_citekeys = {}
   for _, v in pairs(sql_bbt) do
     bbt_citekeys[v.itemKey] = v.citationKey
@@ -83,7 +82,7 @@ function M.get_items()
 
   for _, v in pairs(sql_items) do
     if raw_items[v.key] == nil then
-      raw_items[v.key] = { creators = {}, attachment = {} }
+      raw_items[v.key] = { creators = {}, attachment = {}, key = v.key }
     end
     raw_items[v.key][v.fieldName] = v.value
     raw_items[v.key].itemType = v.typeName
