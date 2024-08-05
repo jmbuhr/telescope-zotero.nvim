@@ -64,13 +64,18 @@ local function get_attachment_options(item)
 end
 
 local function open_url(url, file_type)
+  local open_cmd
   if file_type == 'pdf' and M.config.pdf_opener then
     -- Use the custom PDF opener if specified
     vim.fn.system(M.config.pdf_opener .. ' ' .. vim.fn.shellescape(url))
-  else
-    -- Use vim.ui.open for other file types or if no custom PDF opener is set
-    vim.ui.open(url)
+  elseif vim.fn.has 'win32' == 1 then
+    open_cmd = 'start'
+  elseif vim.fn.has 'macunix' == 1 then
+    open_cmd = 'open'
+  else -- Assume Unix
+    open_cmd = 'xdg-open'
   end
+  vim.fn.system(open_cmd .. ' ' .. vim.fn.shellescape(url))
 end
 
 local function open_in_zotero(item_key)
@@ -88,12 +93,12 @@ local function open_attachment(item)
         file_path = zotero_storage .. '/' .. file_path
       end
       if file_path ~= 0 then
-        open_url(file_path, 'pdf')
+        open_url(file_path)
       else
         vim.notify('File not found: ' .. file_path, vim.log.levels.ERROR)
       end
     elseif choice.type == 'doi' then
-      open_url(choice.url)
+      vim.ui.open(choice.url)
     elseif choice.type == 'zotero' then
       open_in_zotero(choice.key)
     end
