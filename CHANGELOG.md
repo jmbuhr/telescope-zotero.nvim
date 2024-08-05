@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.3.1...v1.4.0) (2024-08-05)
+
+
+### Features
+
+* open pdf directly from telescope list ([be1cc20](https://github.com/jmbuhr/telescope-zotero.nvim/commit/be1cc200031d376c8ca76af8ddd44974ed029e24))
+
 ## [1.3.1](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.3.0...v1.3.1) (2024-04-23)
 
 
