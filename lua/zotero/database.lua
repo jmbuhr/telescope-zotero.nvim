@@ -34,7 +34,10 @@ local query_items = [[
       DISTINCT items.key, items.itemID,
       fields.fieldName,
       parentItemDataValues.value,
-      itemTypes.typeName
+      itemTypes.typeName,
+      itemAttachments.path AS attachment_path,
+      itemAttachments.contentType AS attachment_content_type,
+      itemAttachments.linkMode AS attachment_link_mode
     FROM
       items
       INNER JOIN itemData ON itemData.itemID = items.itemID
@@ -43,7 +46,8 @@ local query_items = [[
       INNER JOIN itemDataValues as parentItemDataValues ON parentItemDataValues.valueID = parentItemData.valueID
       INNER JOIN fields ON fields.fieldID = parentItemData.fieldID
       INNER JOIN itemTypes ON itemTypes.itemTypeID = items.itemTypeID
-    ]]
+      LEFT JOIN itemAttachments ON items.itemID = itemAttachments.parentItemID AND itemAttachments.contentType = 'application/pdf'
+]]
 
 local query_creators = [[
     SELECT
@@ -71,7 +75,6 @@ function M.get_items()
     vim.notify_once('[zotero] could not query database.', vim.log.levels.WARN, {})
     return {}
   end
-
   local bbt_citekeys = {}
   for _, v in pairs(sql_bbt) do
     bbt_citekeys[v.itemKey] = v.citationKey
@@ -79,16 +82,26 @@ function M.get_items()
 
   for _, v in pairs(sql_items) do
     if raw_items[v.key] == nil then
-      raw_items[v.key] = { creators = {} }
+      raw_items[v.key] = { creators = {}, attachment = {}, key = v.key }
     end
     raw_items[v.key][v.fieldName] = v.value
     raw_items[v.key].itemType = v.typeName
+    if v.attachment_path then
+      raw_items[v.key].attachment.path = v.attachment_path
+      raw_items[v.key].attachment.content_type = v.attachment_content_type
+      raw_items[v.key].attachment.link_mode = v.attachment_link_mode
+    end
+    if v.fieldName == 'DOI' then
+      raw_items[v.key].DOI = v.value
+    end
   end
+
   for _, v in pairs(sql_creators) do
     if raw_items[v.key] ~= nil then
       raw_items[v.key].creators[v.orderIndex + 1] = { firstName = v.firstName, lastName = v.lastName, creatorType = v.creatorType }
     end
   end
+
   for key, item in pairs(raw_items) do
     local citekey = bbt_citekeys[key]
     if citekey ~= nil then

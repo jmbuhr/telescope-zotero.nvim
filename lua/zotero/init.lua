@@ -12,6 +12,8 @@ local M = {}
 local default_opts = {
   zotero_db_path = '~/Zotero/zotero.sqlite',
   better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
+  zotero_storage_path = '~/Zotero/storage',
+  pdf_opener = nil,
   -- specify options for different filetypes
   -- locate_bib can be a string or a function
   ft = {
@@ -48,6 +50,87 @@ M.setup = function(opts)
   M.config = vim.tbl_extend('force', default_opts, opts or {})
 end
 
+local function get_attachment_options(item)
+  local options = {}
+  if item.attachment and item.attachment.path then
+    table.insert(options, { type = 'pdf', path = item.attachment.path, link_mode = item.attachment.link_mode })
+  end
+  if item.DOI then
+    table.insert(options, { type = 'doi', url = 'https://doi.org/' .. item.DOI })
+  end
+  -- Add option to open in Zotero
+  table.insert(options, { type = 'zotero', key = item.key })
+  return options
+end
+
+local function open_url(url, file_type)
+  local open_cmd
+  if file_type == 'pdf' and M.config.pdf_opener then
+    -- Use the custom PDF opener if specified
+    vim.fn.system(M.config.pdf_opener .. ' ' .. vim.fn.shellescape(url))
+  elseif vim.fn.has 'win32' == 1 then
+    open_cmd = 'start'
+  elseif vim.fn.has 'macunix' == 1 then
+    open_cmd = 'open'
+  else -- Assume Unix
+    open_cmd = 'xdg-open'
+  end
+  vim.fn.system(open_cmd .. ' ' .. vim.fn.shellescape(url))
+end
+
+local function open_in_zotero(item_key)
+  local zotero_url = 'zotero://select/library/items/' .. item_key
+  open_url(zotero_url)
+end
+
+local function open_attachment(item)
+  local options = get_attachment_options(item)
+  local function execute_option(choice)
+    if choice.type == 'pdf' then
+      local file_path = choice.path
+      if choice.link_mode == 1 then -- 1 typically means stored file
+        local zotero_storage = vim.fn.expand(M.config.zotero_storage_path)
+        file_path = zotero_storage .. '/' .. file_path
+      end
+      if file_path ~= 0 then
+        open_url(file_path)
+      else
+        vim.notify('File not found: ' .. file_path, vim.log.levels.ERROR)
+      end
+    elseif choice.type == 'doi' then
+      vim.ui.open(choice.url)
+    elseif choice.type == 'zotero' then
+      open_in_zotero(choice.key)
+    end
+  end
+
+  if #options == 1 then
+    -- If there's only one option, execute it immediately
+    execute_option(options[1])
+  elseif #options > 1 then
+    -- If there are multiple options, use ui.select
+    vim.ui.select(options, {
+      prompt = 'Choose action:',
+      format_item = function(option)
+        if option.type == 'pdf' then
+          return 'Open PDF'
+        elseif option.type == 'doi' then
+          return 'Open DOI link'
+        elseif option.type == 'zotero' then
+          return 'Open in Zotero'
+        end
+      end,
+    }, function(choice)
+      if choice then
+        execute_option(choice)
+      end
+    end)
+  else
+    -- If there are no options, notify the user
+    vim.notify('No attachments or links available for this item', vim.log.levels.INFO)
+  end
+end
+
 local get_items = function()
   local success = database.connect(M.config)
   if success then
@@ -73,7 +156,7 @@ local insert_entry = function(entry, insert_key_fn, locate_bib_fn)
   end
   bib_path = vim.fn.expand(bib_path)
 
-  -- check if is already in the bib filen
+  -- check if is already in the bib file
   for line in io.lines(bib_path) do
     if string.match(line, '^@') and string.match(line, citekey) then
       return
@@ -109,16 +192,25 @@ local function make_entry(pre_entry)
   year = extract_year(year)
   pre_entry.year = year
 
-  local display_value = string.format('%s, %s) %s', last_name, year, pre_entry.title)
+  local options = get_attachment_options(pre_entry)
+  local icon = ''
+  if #options > 2 then
+    icon = ' ' -- Icon for both PDF and DOI available
+  elseif #options == 2 then
+    icon = options[1].type == 'pdf' and '󰈙 ' or '󰖟 '
+  else
+    icon = ' ' -- Two spaces for blank icon
+  end
+  local display_value = string.format('%s%s, %s) %s', icon, last_name, year, pre_entry.title)
   local highlight = {
-    { { 0, #last_name + #year + 3 }, 'Comment' },
-    { { #last_name + 2, #year + #last_name + 2 }, '@markup.underline' },
+    { { 0, #icon }, 'SpecialChar' },
+    { { #icon, #icon + #last_name + #year + 3 }, 'Comment' },
+    { { #icon + #last_name + 2, #icon + #year + #last_name + 2 }, '@markup.underline' },
   }
 
   local function make_display(_)
     return display_value, highlight
   end
-
   return {
     value = pre_entry,
     display = make_display,
@@ -151,6 +243,15 @@ M.picker = function(opts)
           actions.close(prompt_bufnr)
           local entry = action_state.get_selected_entry()
           insert_entry(entry, ft_options.insert_key_formatter, ft_options.locate_bib)
+        end)
+        -- Update the mapping to open PDF or DOI
+        map('i', '<C-o>', function()
+          local entry = action_state.get_selected_entry()
+          open_attachment(entry.value)
+        end)
+        map('n', 'o', function()
+          local entry = action_state.get_selected_entry()
+          open_attachment(entry.value)
         end)
         return true
       end,

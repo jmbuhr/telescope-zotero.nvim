@@ -47,28 +47,19 @@ end
 M.entry_to_bib_entry = function(entry)
   local bib_entry = '@'
   local item = entry.value
-  local citekey = item.citekey
-  if not citekey then
-    citekey = item.citekey
-  end
-  bib_entry = bib_entry .. item.itemType .. '{' .. citekey .. ',\n'
+  local citekey = item.citekey or ''
+  bib_entry = bib_entry .. (item.itemType or '') .. '{' .. citekey .. ',\n'
   for k, v in pairs(item) do
     if k == 'creators' then
       bib_entry = bib_entry .. '  author = {'
       local author = ''
       for _, creator in ipairs(v) do
-        author = author .. creator.lastName .. ', ' .. creator.firstName .. ' and '
+        author = author .. (creator.lastName or '') .. ', ' .. (creator.firstName or '') .. ' and '
       end
       -- remove trailing ' and '
       author = string.sub(author, 1, -6)
       bib_entry = bib_entry .. author .. '},\n'
-    elseif k == 'citekey' then
-      -- do nothing
-      -- already in the header
-    elseif k == 'itemType' then
-      -- do nothing
-      -- already in the header
-    else
+    elseif k ~= 'citekey' and k ~= 'itemType' and k ~= 'attachment' and type(v) == 'string' then
       bib_entry = bib_entry .. '  ' .. k .. ' = {' .. v .. '},\n'
     end
   end
