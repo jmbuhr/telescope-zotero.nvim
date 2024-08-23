@@ -42,13 +42,11 @@ M.locate_tex_bib = function()
 	if not comment then
 		local location = string.match(line, [[\bibliography{[ "']*([^'"\{\}]+)["' ]*}]])
 		if location then
-			print('this is the location found by telescope zotero: "' .. location .. '"')
 		  return location .. '.bib'
 		end
 		-- checking for biblatex
 		location = string.match(line, [[\addbibresource{[ "']*([^'"\{\}]+)["' ]*}]])
 		if location then
-			print('biblatex found:"' .. location .. '"')
 			-- addbibresource optionally allows you to add .bib
 		  return location:gsub(".bib", "") .. '.bib'
 		end
