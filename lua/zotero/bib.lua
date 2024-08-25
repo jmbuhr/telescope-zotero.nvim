@@ -37,10 +37,20 @@ end
 M.locate_tex_bib = function()
   local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   for _, line in ipairs(lines) do
-    local location = string.match(line, [[\bibliography{[ "']*([^'"\{\}]+)["' ]*}]])
-    if location then
-      return location .. '.bib'
-    end
+	 -- ignore commented bibliography
+    local comment = string.match(line, "^%%")
+	if not comment then
+		local location = string.match(line, [[\bibliography{[ "']*([^'"\{\}]+)["' ]*}]])
+		if location then
+		  return location .. '.bib'
+		end
+		-- checking for biblatex
+		location = string.match(line, [[\addbibresource{[ "']*([^'"\{\}]+)["' ]*}]])
+		if location then
+			-- addbibresource optionally allows you to add .bib
+		  return location:gsub(".bib", "") .. '.bib'
+		end
+	end
   end
 end
 
