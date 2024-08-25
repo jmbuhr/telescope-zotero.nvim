@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.4.0...v1.5.0) (2024-08-25)
+
+
+### Features
+
+* added biblatex support via [#15](https://github.com/jmbuhr/telescope-zotero.nvim/issues/15) from Chiarandini/main ([901d79b](https://github.com/jmbuhr/telescope-zotero.nvim/commit/901d79bec0ee7d28be783f57066e7fecb31ccdda))
+
 ## [1.4.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.3.1...v1.4.0) (2024-08-05)
 
 
