@@ -53,7 +53,15 @@ end
 local function get_attachment_options(item)
   local options = {}
   if item.attachment and item.attachment.path then
-    table.insert(options, { type = 'pdf', path = item.attachment.path, link_mode = item.attachment.link_mode })
+    local path = item.attachment.path
+    local zotero_storage = ''
+    if item.attachment.link_mode == 1 then -- 1 typically means stored file
+      zotero_storage = vim.fn.expand(M.config.zotero_storage_path)
+    end
+    local key = item.key or ''
+    path = string.gsub(path, '^storage:', '')
+    path = zotero_storage .. '/' .. key .. '/' .. path
+    table.insert(options, { type = 'pdf', path = path, link_mode = item.attachment.link_mode })
   end
   if item.DOI then
     table.insert(options, { type = 'doi', url = 'https://doi.org/' .. item.DOI })
@@ -88,10 +96,6 @@ local function open_attachment(item)
   local function execute_option(choice)
     if choice.type == 'pdf' then
       local file_path = choice.path
-      if choice.link_mode == 1 then -- 1 typically means stored file
-        local zotero_storage = vim.fn.expand(M.config.zotero_storage_path)
-        file_path = zotero_storage .. '/' .. file_path
-      end
       if file_path ~= 0 then
         open_url(file_path)
       else
