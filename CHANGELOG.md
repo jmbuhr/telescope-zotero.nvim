@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.5.0...v1.5.1) (2025-02-07)
+
+
+### Bug Fixes
+
+* open pdfs in zotero storage via [#19](https://github.com/jmbuhr/telescope-zotero.nvim/issues/19) by [@adam-coates](https://github.com/adam-coates) ([0eaff32](https://github.com/jmbuhr/telescope-zotero.nvim/commit/0eaff324a79764da94d8037f57c958d8230192c5))
+
 ## [1.5.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.4.0...v1.5.0) (2024-08-25)
 
 
