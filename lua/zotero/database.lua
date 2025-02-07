@@ -37,7 +37,9 @@ local query_items = [[
       itemTypes.typeName,
       itemAttachments.path AS attachment_path,
       itemAttachments.contentType AS attachment_content_type,
-      itemAttachments.linkMode AS attachment_link_mode
+      itemAttachments.linkMode AS attachment_link_mode,
+      -- Fetch the folder name from the itemAttachments table
+      SUBSTR(itemAttachments.path, INSTR(itemAttachments.path, ':') + 1) AS folder_name
     FROM
       items
       INNER JOIN itemData ON itemData.itemID = items.itemID
@@ -48,7 +50,6 @@ local query_items = [[
       INNER JOIN itemTypes ON itemTypes.itemTypeID = items.itemTypeID
       LEFT JOIN itemAttachments ON items.itemID = itemAttachments.parentItemID AND itemAttachments.contentType = 'application/pdf'
 ]]
-
 local query_creators = [[
     SELECT
       DISTINCT items.key,
