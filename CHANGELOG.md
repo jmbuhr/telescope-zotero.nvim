@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.2](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.5.1...v1.5.2) (2025-02-27)
+
+
+### Bug Fixes
+
+* use jobstart to open pdf via [#21](https://github.com/jmbuhr/telescope-zotero.nvim/issues/21) from adam-coates/fix/pdfopener ([69a66fe](https://github.com/jmbuhr/telescope-zotero.nvim/commit/69a66fef08ee30a566903af66f2316bf2e3d32d4))
+
 ## [1.5.1](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.5.0...v1.5.1) (2025-02-07)
 
 
