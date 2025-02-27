@@ -72,7 +72,7 @@ local function open_url(url, file_type)
   if file_type == 'pdf' and M.config.pdf_opener then
     -- Use the custom PDF opener if specified
     vim.notify('Opening PDF with: ' .. M.config.pdf_opener .. ' ' .. vim.fn.shellescape(url), vim.log.levels.INFO)
-    vim.fn.system(M.config.pdf_opener .. ' ' .. vim.fn.shellescape(url))
+    vim.fn.jobstart({ M.config.pdf_opener, url }, { detach = true })
   elseif vim.fn.has 'win32' == 1 then
     open_cmd = 'start'
   elseif vim.fn.has 'macunix' == 1 then
@@ -81,7 +81,7 @@ local function open_url(url, file_type)
     open_cmd = 'xdg-open'
   end
   vim.notify('Opening URL with: ' .. open_cmd .. ' ' .. vim.fn.shellescape(url), vim.log.levels.INFO)
-  vim.fn.system(open_cmd .. ' ' .. vim.fn.shellescape(url))
+  vim.fn.jobstart({ open_cmd, url }, { detach = true })
 end
 local function open_in_zotero(item_key)
   local zotero_url = 'zotero://select/library/items/' .. item_key
