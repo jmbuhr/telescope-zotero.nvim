@@ -95,19 +95,16 @@ local function open_attachment(item)
       local file_path = choice.path
       if choice.link_mode == 1 then -- 1 typically means stored file
         local zotero_storage = vim.fn.expand(M.config.zotero_storage_path)
-        -- Remove the ':storage' prefix from the path
         file_path = file_path:gsub('^storage:', '')
-        -- Use a wildcard to search for the PDF file in subdirectories
         local search_path = zotero_storage .. '/*/' .. file_path
-        local matches = vim.fn.glob(search_path, true, true) -- Returns a list of matching files
+        local matches = vim.fn.glob(search_path, true, true)
         if #matches > 0 then
-          file_path = matches[1] -- Use the first match
+          file_path = matches[1]
         else
           vim.notify('File not found: ' .. search_path, vim.log.levels.ERROR)
           return
         end
       end
-      -- Debug: Print the full path
       vim.notify('Attempting to open PDF: ' .. file_path, vim.log.levels.INFO)
       if file_path ~= 0 then
         open_url(file_path, 'pdf')
@@ -115,35 +112,40 @@ local function open_attachment(item)
         vim.notify('File not found: ' .. file_path, vim.log.levels.ERROR)
       end
     elseif choice.type == 'doi' then
-      vim.ui.open(choice.url)
+      open_url(choice.url)
     elseif choice.type == 'zotero' then
       open_in_zotero(choice.key)
     end
   end
 
   if #options == 1 then
-    -- If there's only one option, execute it immediately
     execute_option(options[1])
   elseif #options > 1 then
-    -- If there are multiple options, use ui.select
-    vim.ui.select(options, {
-      prompt = 'Choose action:',
-      format_item = function(option)
-        if option.type == 'pdf' then
-          return 'Open PDF'
-        elseif option.type == 'doi' then
-          return 'Open DOI link'
-        elseif option.type == 'zotero' then
-          return 'Open in Zotero'
-        end
-      end,
-    }, function(choice)
-      if choice then
-        execute_option(choice)
-      end
-    end)
+    pickers
+      .new({}, {
+        prompt_title = 'Choose attachment',
+        finder = finders.new_table {
+          results = options,
+          entry_maker = function(entry)
+            return {
+              value = entry,
+              display = entry.type == 'pdf' and 'Open PDF' or entry.type == 'doi' and 'Open DOI link' or 'Open in Zotero',
+              ordinal = entry.type,
+            }
+          end,
+        },
+        sorter = conf.generic_sorter {},
+        attach_mappings = function(prompt_bufnr, map)
+          actions.select_default:replace(function()
+            actions.close(prompt_bufnr)
+            local entry = action_state.get_selected_entry()
+            execute_option(entry.value)
+          end)
+          return true
+        end,
+      })
+      :find()
   else
-    -- If there are no options, notify the user
     vim.notify('No attachments or links available for this item', vim.log.levels.INFO)
   end
 end
