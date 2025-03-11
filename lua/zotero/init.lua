@@ -161,17 +161,11 @@ local insert_entry = function(entry, insert_key_fn, locate_bib_fn)
   local citekey = entry.value.citekey
   local insert_key = insert_key_fn(citekey)
   vim.api.nvim_put({ insert_key }, '', false, true)
-  local bib_path = nil
-  if type(locate_bib_fn) == 'string' then
-    bib_path = locate_bib_fn
-  elseif type(locate_bib_fn) == 'function' then
-    bib_path = locate_bib_fn()
-  end
+  local bib_path = bib.get_bib_path(locate_bib_fn)
   if bib_path == nil then
     vim.notify_once('Could not find a bibliography file', vim.log.levels.WARN)
     return
   end
-  bib_path = vim.fn.expand(bib_path)
 
   -- check if is already in the bib file
   for line in io.lines(bib_path) do
