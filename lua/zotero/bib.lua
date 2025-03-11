@@ -6,14 +6,22 @@ M.quarto = {}
 M.tex = {}
 M['quarto.cached_bib'] = nil
 
+local function get_absolute_path(yaml_bib)
+  local bufnr = vim.api.nvim_get_current_buf()
+  local bufpath = vim.api.nvim_buf_get_name(bufnr)
+  local dir = vim.fn.fnamemodify(bufpath, ':h')
+  return vim.fs.joinpath(dir, yaml_bib)
+end
+
 M.locate_quarto_bib = function()
   if M['quarto.cached_bib'] then
     return M['quarto.cached_bib']
   end
   local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   for _, line in ipairs(lines) do
-    local location = string.match(line, [[bibliography:[ "']*(.+)["' ]*]])
-    if location then
+    local raw_location = string.match(line, [[bibliography:[ "']*(.+)["' ]*]])
+    if raw_location then
+      local location = get_absolute_path(raw_location)
       M['quarto.cached_bib'] = location
       return M['quarto.cached_bib']
     end
@@ -21,7 +29,7 @@ M.locate_quarto_bib = function()
   -- no bib locally defined
   -- test for quarto project-wide definition
   local fname = vim.api.nvim_buf_get_name(0)
-  local root = require('lspconfig.util').root_pattern '_quarto.yml' (fname)
+  local root = require('lspconfig.util').root_pattern '_quarto.yml'(fname)
   if root then
     local file = root .. '/_quarto.yml'
     for line in io.lines(file) do
@@ -38,7 +46,7 @@ M.locate_tex_bib = function()
   local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   for _, line in ipairs(lines) do
     -- ignore commented bibliography
-    local comment = string.match(line, "^%%")
+    local comment = string.match(line, '^%%')
     if not comment then
       local location = string.match(line, [[\bibliography{[ "']*([^'"\{\}]+)["' ]*}]])
       if location then
@@ -48,7 +56,7 @@ M.locate_tex_bib = function()
       location = string.match(line, [[\addbibresource{[ "']*([^'"\{\}]+)["' ]*}]])
       if location then
         -- addbibresource optionally allows you to add .bib
-        return location:gsub(".bib", "") .. '.bib'
+        return location:gsub('.bib', '') .. '.bib'
       end
     end
   end
