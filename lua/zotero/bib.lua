@@ -7,11 +7,13 @@ M.quarto = {}
 M.tex = {}
 M['quarto.cached_bib'] = nil
 
-local function get_absolute_path(yaml_bib)
-  local bufnr = vim.api.nvim_get_current_buf()
-  local bufpath = vim.api.nvim_buf_get_name(bufnr)
-  local dir = vim.fn.fnamemodify(bufpath, ':h')
-  return vim.fs.joinpath(dir, yaml_bib)
+local function sanitize_path(path)
+  -- Sanitize the path: remove quotes and trim whitespace
+  -- This duplicates some functionality from locate_quarto_bib
+  path = path:gsub('^%s*["]?(.-)["\']?%s*$', '%1')
+  -- Unescape backslashes
+  path = path:gsub('\\([/"])', '%1')
+  return path
 end
 
 M.locate_quarto_bib = function()
@@ -77,13 +79,16 @@ M.get_bib_path = function(locate_bib_fn)
   if initial_bib == nil then
     return nil
   end
-  -- Try direct path first and return an absolute path if readable
-  if vim.fn.filereadable(initial_bib) == 1 then
-    return vim.fn.fnamemodify(initial_bib, ':p')
+  -- Sanitize and expand the path
+  local sanitized_path = sanitize_path(initial_bib)
+  -- Try direct, sanitized, path first and return an absolute path if readable
+  if vim.fn.filereadable(vim.fn.expand(sanitized_path)) == 1 then
+    return vim.fn.fnamemodify(sanitized_path, ':p')
   end
   -- Use buffer directory to try and resolve relative path
   local buf_dir = vim.fn.expand '%:p:h'
-  local full_path = buf_dir .. '/' .. initial_bib
+  local full_path = buf_dir .. '/' .. sanitized_path
+  full_path = vim.fn.expand(full_path)
   -- return an abosulte path if readable
   if vim.fn.filereadable(full_path) == 1 then
     return vim.fn.fnamemodify(full_path, ':p')
@@ -100,18 +105,26 @@ M.get_bib_path_plenary = function(locate_bib_fn)
   elseif type(locate_bib_fn) == 'function' then
     initial_bib = locate_bib_fn()
   end
-  if initial_bib then
-    local bib_path = Path:new(initial_bib)
-    if bib_path:is_file() then
-      return bib_path:absolute()
-    else
-      local abs_path = Path:new(get_absolute_path(initial_bib))
-      if abs_path:is_file() then
-        return abs_path:absolute()
-      else
-        return nil
-      end
-    end
+  -- return nil if no matches
+  if initial_bib == nil then
+    return nil
+  end
+  -- Sanitize and expand the path
+  local sanitized_path = sanitize_path(initial_bib)
+  local bib_path = Path:new(sanitized_path)
+  -- Check if initial path is a file and return absolute path
+  if bib_path:is_file() then
+    return bib_path:absolute()
+  end
+  -- If not use buffer directory to resolve relative path
+  local buf_dir = vim.fn.expand '%:p:h'
+  local full_path = buf_dir .. '/' .. sanitized_path
+  local abs_path = Path:new(full_path)
+  -- Return absolute path if readable
+  if abs_path:is_file() then
+    return abs_path:absolute()
+  else
+    return nil
   end
 end
 
