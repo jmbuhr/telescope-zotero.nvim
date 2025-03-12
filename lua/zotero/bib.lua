@@ -11,6 +11,8 @@ local function sanitize_path(path)
   -- Sanitize the path: remove quotes and trim whitespace
   -- This duplicates some functionality from locate_quarto_bib
   path = path:gsub('^%s*["]?(.-)["\']?%s*$', '%1')
+  -- Convert escaped spaces to regular spaces
+  path = path:gsub('\\ ', ' ')
   -- Unescape backslashes
   path = path:gsub('\\([/"])', '%1')
   return path
