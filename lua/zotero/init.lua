@@ -183,7 +183,7 @@ local insert_entry = function(entry, insert_key_fn, locate_bib_fn)
   end
   file:write(bib_entry)
   file:close()
-  vim.print('wrote ' .. citekey .. ' to ' .. bib_path)
+  vim.print('wrote ' .. citekey .. ' to ' .. vim.fn.fnamemodify(bib_path, ':t'))
 end
 
 local function extract_year(date)
