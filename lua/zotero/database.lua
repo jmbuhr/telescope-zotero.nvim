@@ -99,7 +99,8 @@ function M.get_items()
 
   for _, v in pairs(sql_creators) do
     if raw_items[v.key] ~= nil then
-      raw_items[v.key].creators[v.orderIndex + 1] = { firstName = v.firstName, lastName = v.lastName, creatorType = v.creatorType }
+      raw_items[v.key].creators[v.orderIndex + 1] =
+        { firstName = v.firstName, lastName = v.lastName, creatorType = v.creatorType }
     end
   end
 

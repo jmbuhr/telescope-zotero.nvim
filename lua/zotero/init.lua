@@ -90,6 +90,7 @@ end
 
 local function open_attachment(item)
   local options = get_attachment_options(item)
+
   local function execute_option(choice)
     if choice.type == 'pdf' then
       local file_path = choice.path
@@ -126,6 +127,7 @@ local function open_attachment(item)
     execute_option(options[1])
   elseif #options > 1 then
     -- If there are multiple options, use ui.select
+
     vim.ui.select(options, {
       prompt = 'Choose action:',
       format_item = function(option)
@@ -137,11 +139,7 @@ local function open_attachment(item)
           return 'Open in Zotero'
         end
       end,
-    }, function(choice)
-      if choice then
-        execute_option(choice)
-      end
-    end)
+    }, execute_option)
   else
     -- If there are no options, notify the user
     vim.notify('No attachments or links available for this item', vim.log.levels.INFO)
