@@ -1,4 +1,4 @@
-*telescope-zotero.nvim.txt*  For Neovim >= 0.9.5 Last change: 2025 February 27
+*telescope-zotero.nvim.txt*   For Neovim >= 0.9.5   Last change: 2025 March 31
 
 ==============================================================================
 Table of Contents                    *telescope-zotero.nvim-table-of-contents*
