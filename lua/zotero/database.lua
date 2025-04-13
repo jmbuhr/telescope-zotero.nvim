@@ -65,6 +65,52 @@ local query_creators = [[
       INNER JOIN creatorTypes ON itemCreators.creatorTypeID = creatorTypes.creatorTypeID
     ]]
 
+local query_annotations_template = [[
+  SELECT
+    itemAnnotations.type,
+    itemAnnotations.authorName,
+    itemAnnotations.text,
+    itemAnnotations.comment,
+    itemAnnotations.pageLabel,
+    itemAnnotations.color,        -- Added color, might be useful
+    itemAnnotations.sortIndex     -- Added for potential sorting later
+  FROM items
+  JOIN itemAttachments ON items.itemID = itemAttachments.parentItemID
+  JOIN itemAnnotations ON itemAnnotations.parentItemID = itemAttachments.ItemID
+  WHERE items.key = '%s'
+  ORDER BY CAST(itemAnnotations.pageLabel AS INTEGER), itemAnnotations.sortIndex; -- Order by page, then position
+]]
+
+-- Add this new function to fetch annotations
+function M.get_annotations(itemKey)
+  if not M.db then
+    vim.notify_once('[zotero] Zotero database not connected.', vim.log.levels.ERROR)
+    return nil, 'Database not connected' -- Return error message
+  end
+
+  -- Basic string formatting. Assumes itemKey is safe as it comes from our own DB query.
+  -- For robustness, parameterized queries would be better if the library supports them easily.
+  local query = string.format(query_annotations_template, itemKey)
+
+  local ok, results = pcall(M.db.eval, M.db, query)
+
+  if not ok then
+    local err_msg = results or 'Unknown database error' -- pcall returns error message as second arg
+    vim.notify('[zotero] Error querying annotations: ' .. err_msg, vim.log.levels.ERROR)
+    return nil, err_msg
+  end
+
+  if results == nil then
+    -- This might happen if the query itself fails silently sometimes, though pcall should catch errors
+     vim.notify('[zotero] Annotation query returned nil results.', vim.log.levels.WARN)
+    return {}, nil -- Return empty table, no specific error
+  end
+
+  -- No need to check #results == 0 here, just return the (potentially empty) list
+  return results, nil -- Return results table and nil error
+end
+
+
 function M.get_items()
   local items = {}
   local raw_items = {}
@@ -115,3 +161,4 @@ function M.get_items()
 end
 
 return M
+

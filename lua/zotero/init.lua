@@ -9,11 +9,26 @@ local database = require 'zotero.database'
 
 local M = {}
 
+local default_annotation_color_headings = {
+  ['#ffd400'] = '## Key Points', -- Yellow
+  ['#ff6666'] = '## Background', -- Red / Pink
+  ['#5fb236'] = '## Hypothesis / Positive', -- Green
+  ['#2ea8e5'] = '## Methods / Process', -- Blue
+  ['#a28ae5'] = '## Results / Data', -- Purple
+  ['#e56eee'] = '## Conclusions / Questions', -- Magenta
+  ['#f19837'] = '## Implications / ToDo', -- Orange
+  ['#aaaaaa'] = '## Further Reading / Misc', -- Grey
+  -- Zotero default highlight color (if different from #ffd400) might need adding:
+  ['#ffde5c'] = '## Key Points', -- Another common Yellow in some versions?
+  -- Add mappings for other Zotero default colors if needed (e.g., drawings)
+}
+
 local default_opts = {
   zotero_db_path = '~/Zotero/zotero.sqlite',
   better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
   zotero_storage_path = '~/Zotero/storage',
   pdf_opener = nil,
+  annotation_color_headings = default_annotation_color_headings,
   -- specify options for different filetypes
   -- locate_bib can be a string or a function
   ft = {
@@ -47,7 +62,25 @@ local default_opts = {
 M.config = default_opts
 
 M.setup = function(opts)
-  M.config = vim.tbl_extend('force', default_opts, opts or {})
+  opts = opts or {}
+  -- Use deep extend to merge user options with defaults
+  -- 'force' ensures nested tables like annotation_color_headings are merged, not replaced entirely.
+  M.config = vim.tbl_deep_extend('force', vim.deepcopy(default_opts), opts)
+
+  -- Normalize the keys (colors) in the final annotation_color_headings map to lowercase
+  -- This handles potential inconsistencies like #FFD400 vs #ffd400
+  local normalized_headings = {}
+  if M.config.annotation_color_headings and type(M.config.annotation_color_headings) == 'table' then
+    for color, heading in pairs(M.config.annotation_color_headings) do
+      if type(color) == 'string' and type(heading) == 'string' then
+        normalized_headings[string.lower(color)] = heading
+      end
+    end
+  end
+  M.config.annotation_color_headings = normalized_headings
+
+  -- Optional: Print effective config for debugging
+  -- print(vim.inspect(M.config.annotation_color_headings))
 end
 
 local function get_attachment_options(item)
@@ -239,6 +272,151 @@ local function make_entry(pre_entry)
   }
 end
 
+local function display_annotations(annotations, item)
+  local lines = { '# Annotations for: ' .. (item.title or item.citekey or item.key), '' } -- Main Title
+  local color_headings_map = M.config.annotation_color_headings or {} -- Get the normalized map
+  local citekey = item.citekey or item.key -- Get the citation key for metadata
+
+  if #annotations == 0 then
+    table.insert(lines, '> No annotations found for this item.')
+  else
+    local current_page = nil
+    -- Ensure annotations are sorted by page and then position within the page
+    table.sort(annotations, function(a, b)
+      local page_a = tonumber(a.pageLabel) or -1
+      local page_b = tonumber(b.pageLabel) or -1
+      if page_a ~= page_b then
+        return page_a < page_b
+      end
+      -- Use sortIndex which usually reflects Zotero's internal order
+      return (a.sortIndex or -1) < (b.sortIndex or -1)
+    end)
+
+    for _, ann in ipairs(annotations) do
+      -- Normalize color key for lookup
+      local color_key = ann.color and string.lower(ann.color) or nil
+
+      -- --- Page Separator and Heading ---
+      if ann.pageLabel ~= current_page then
+        if current_page ~= nil then
+          table.insert(lines, '---') -- Horizontal rule between pages
+          table.insert(lines, '')
+        end
+        table.insert(lines, string.format('### Page %s', ann.pageLabel or 'N/A')) -- Page heading
+        table.insert(lines, '')
+        current_page = ann.pageLabel
+      end
+
+      -- --- Color-Based Heading ---
+      local custom_heading = color_key and color_headings_map[color_key] or nil
+      if custom_heading then
+        table.insert(lines, custom_heading)
+        -- table.insert(lines, '') -- Optional extra space after heading? Maybe not needed now.
+      end
+
+      -- --- Prepare Metadata String ---
+      local page_str = ann.pageLabel and #ann.pageLabel > 0 and ('p. ' .. ann.pageLabel) or nil
+      -- Let's keep the author too, as it can be useful
+      local author_str = ann.authorName and #ann.authorName > 0 and ('by ' .. ann.authorName) or nil
+
+      local metadata_parts = {}
+      if citekey then
+        table.insert(metadata_parts, '@' .. citekey)
+      end
+      if page_str then
+        table.insert(metadata_parts, page_str)
+      end
+      if author_str then
+        table.insert(metadata_parts, author_str)
+      end -- Added author back
+
+      -- Format: " [@citekey, p. X, by Author]" or similar variations if parts are missing
+      local metadata_string = #metadata_parts > 0 and (' [' .. table.concat(metadata_parts, ', ') .. ']') or ''
+
+      -- --- Annotation Details (Comment First) ---
+      local annotation_lines_added = false -- Track if we added anything for this ann
+
+      -- 1. Process Comment (if it exists)
+      if ann.comment and #ann.comment > 0 then
+        -- Format as: "- *Comment text* [@citekey, p. X, by Author]"
+        table.insert(lines, string.format('- *%s*%s', ann.comment, metadata_string))
+        annotation_lines_added = true
+      end
+
+      -- 2. Process Highlight Text (if it exists)
+      if ann.text and #ann.text > 0 then
+        -- Format as: "> Highlight text [@citekey, p. X, by Author]"
+        table.insert(lines, string.format('> %s%s', ann.text, metadata_string))
+        annotation_lines_added = true
+      end
+
+      -- 3. Handle annotations with neither text nor comment (e.g., drawing/shape)
+      if not annotation_lines_added then
+        -- Format as: "- *Annotation entry (Type: X, Color: Y)* [@citekey, p. X, by Author]"
+        table.insert(
+          lines,
+          string.format(
+            '- *Annotation entry (Type: %s, Color: %s)*%s',
+            ann.type or '?',
+            color_key or 'N/A',
+            metadata_string
+          )
+        )
+        annotation_lines_added = true
+      end
+
+      -- Add spacing *after* the complete annotation block (comment+highlight, or standalone)
+      if annotation_lines_added then
+        table.insert(lines, '') -- Add a blank line after each annotation block for spacing
+      end
+    end
+  end
+
+  -- --- Create and open the floating window (code remains the same) ---
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(buf, 'bufhidden', 'wipe')
+  vim.api.nvim_buf_set_option(buf, 'filetype', 'markdown')
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+
+  local width = math.floor(vim.api.nvim_get_option 'columns' * 0.75)
+  local height = math.floor(vim.api.nvim_get_option 'lines' * 0.75)
+  local row = math.floor((vim.api.nvim_get_option 'lines' - height) / 2)
+  local col = math.floor((vim.api.nvim_get_option 'columns' - width) / 2)
+
+  local winid = vim.api.nvim_open_win(buf, true, {
+    relative = 'editor',
+    width = width,
+    height = height,
+    row = row,
+    col = col,
+    style = 'minimal',
+    border = 'rounded',
+    title = 'Zotero Annotations (' .. (citekey or item.key) .. ')', -- Use citekey in title too
+    title_pos = 'center',
+  })
+
+  vim.api.nvim_buf_set_keymap(
+    buf,
+    'n',
+    'q',
+    '<cmd>close<CR>',
+    { noremap = true, silent = true, desc = 'Close Annotation Window' }
+  )
+  vim.api.nvim_buf_set_keymap(
+    buf,
+    'n',
+    '<Esc>',
+    '<cmd>close<CR>',
+    { noremap = true, silent = true, desc = 'Close Annotation Window' }
+  )
+
+  if winid then
+    vim.api.nvim_set_option_value('conceallevel', 2, { win = winid })
+    vim.api.nvim_set_option_value('concealcursor', 'nc', { win = winid })
+  end
+end
+
 --- Main entry point of the picker
 --- @param opts any
 M.picker = function(opts)
@@ -259,7 +437,7 @@ M.picker = function(opts)
           local entry = action_state.get_selected_entry()
           insert_entry(entry, ft_options.insert_key_formatter, ft_options.locate_bib)
         end)
-        -- Update the mapping to open PDF or DOI
+
         map('i', '<C-o>', function()
           local entry = action_state.get_selected_entry()
           open_attachment(entry.value)
@@ -268,10 +446,38 @@ M.picker = function(opts)
           local entry = action_state.get_selected_entry()
           open_attachment(entry.value)
         end)
+
+        -- Add the NEW mapping for annotations (e.g., <C-a>)
+        map({ 'i', 'n' }, '<C-a>', function()
+          local entry = action_state.get_selected_entry()
+          if not entry or not entry.value or not entry.value.key then
+            vim.notify('[zotero] Could not get selected item key.', vim.log.levels.WARN)
+            return
+          end
+          local itemKey = entry.value.key
+          local item_data = entry.value -- Pass the whole item data for context
+
+          -- Call the database function
+          local annotations, err = database.get_annotations(itemKey)
+
+          -- Optional: Close the picker window before showing annotations
+          -- actions.close(prompt_bufnr)
+
+          if err then
+            -- Notification already handled in get_annotations
+            -- vim.notify('[zotero] Failed to get annotations: ' .. err, vim.log.levels.ERROR)
+            return
+          end
+
+          -- Call the display function
+          display_annotations(annotations, item_data)
+        end)
+        -- End of NEW mapping
+
         return true
       end,
     })
     :find()
 end
-
 return M
+
