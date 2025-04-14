@@ -30,6 +30,7 @@ local default_opts = {
   pdf_opener = nil,
   annotation_color_headings = default_annotation_color_headings,
   annotation_grouping = 'chronological', -- Options: 'chronological', 'highlight'
+  headings = 'True', -- Options true or false/ "On" or "Off"
   -- specify options for different filetypes
   -- locate_bib can be a string or a function
   ft = {
@@ -274,173 +275,269 @@ local function make_entry(pre_entry)
 end
 
 local function display_annotations(annotations, item)
-    local lines = { '# Annotations for: ' .. (item.title or item.citekey or item.key), '' } -- Main Title
-    local color_headings_map = M.config.annotation_color_headings or {} -- Get the normalized map from config
-    local grouping_mode = M.config.annotation_grouping or 'chronological' -- Get grouping mode
-    local citekey = item.citekey or item.key -- Get the citation key for metadata
+  local lines = { '# Annotations for: ' .. (item.title or item.citekey or item.key), '' } -- Main Title
+  local color_headings_map = M.config.annotation_color_headings or {} -- Get the normalized map from config
+  local grouping_mode = M.config.annotation_grouping or 'chronological' -- Get grouping mode
+  local citekey = item.citekey or item.key -- Get the citation key for metadata
+  local show_headings = M.config.headings == 'on' or M.config.headings == true -- Check if headings should be shown
 
-    if #annotations == 0 then
-        table.insert(lines, '> No annotations found for this item.')
-    else
-        -- Helper function to format a single annotation entry (comment/highlight/other)
-        local function format_single_annotation(ann, metadata_string, color_key)
-            local output_lines = {}
-            local annotation_lines_added = false
-            if ann.comment and #ann.comment > 0 then
-                table.insert(output_lines, string.format('- *%s*%s', ann.comment, metadata_string))
-                annotation_lines_added = true
-            end
-            if ann.text and #ann.text > 0 then
-                table.insert(output_lines, string.format('> %s%s', ann.text, metadata_string))
-                annotation_lines_added = true
-            end
-            if not annotation_lines_added then
-                 table.insert(output_lines, string.format('- *Annotation entry (Type: %s, Color: %s)*%s', ann.type or '?', color_key or 'N/A', metadata_string))
-                 annotation_lines_added = true
-            end
-            return output_lines, annotation_lines_added
+  if #annotations == 0 then
+    table.insert(lines, '> No annotations found for this item.')
+  else
+    -- Helper function to format a single annotation entry (comment/highlight/other)
+    local function format_single_annotation(ann, metadata_string, color_key)
+      local output_lines = {}
+      local annotation_lines_added = false
+      if ann.comment and #ann.comment > 0 then
+        table.insert(output_lines, string.format('- *%s*%s', ann.comment, metadata_string))
+        annotation_lines_added = true
+      end
+      if ann.text and #ann.text > 0 then
+        table.insert(output_lines, string.format('> %s%s', ann.text, metadata_string))
+        annotation_lines_added = true
+      end
+      if not annotation_lines_added then
+        table.insert(
+          output_lines,
+          string.format(
+            '- *Annotation entry (Type: %s, Color: %s)*%s',
+            ann.type or '?',
+            color_key or 'N/A',
+            metadata_string
+          )
+        )
+        annotation_lines_added = true
+      end
+      return output_lines, annotation_lines_added
+    end
+
+    -- Ensure annotations are always sorted by page/position initially
+    table.sort(annotations, function(a, b)
+      local page_a = tonumber(a.pageLabel) or -1
+      local page_b = tonumber(b.pageLabel) or -1
+      if page_a ~= page_b then
+        return page_a < page_b
+      end
+      return (a.sortIndex or -1) < (b.sortIndex or -1)
+    end)
+
+    -- ============================================
+    --  Mode 1: Group by chronological (Default)
+    -- ============================================
+    if grouping_mode == 'chronological' then
+      local current_page = nil
+      for _, ann in ipairs(annotations) do
+        local color_key = ann.color and string.lower(ann.color) or nil
+        if ann.pageLabel ~= current_page then
+          if current_page ~= nil then
+            table.insert(lines, '---')
+            table.insert(lines, '')
+          end
+          -- Always show page headers regardless of headings setting
+          table.insert(lines, string.format('### Page %s', ann.pageLabel or 'N/A'))
+          table.insert(lines, '')
+          current_page = ann.pageLabel
         end
 
-        -- Ensure annotations are always sorted by page/position initially
-        table.sort(annotations, function(a, b)
-            local page_a = tonumber(a.pageLabel) or -1
-            local page_b = tonumber(b.pageLabel) or -1
-            if page_a ~= page_b then return page_a < page_b end
-            return (a.sortIndex or -1) < (b.sortIndex or -1)
-        end)
+        -- Only add color headings if headings are enabled
+        if show_headings then
+          local custom_heading = color_key and color_headings_map[color_key] or nil
+          if custom_heading then
+            table.insert(lines, custom_heading)
+          end
+        end
 
-        -- ============================================
-        --  Mode 1: Group by chronological (Default)
-        -- ============================================
-        if grouping_mode == 'chronological' then
-            local current_page = nil
-            for _, ann in ipairs(annotations) do
-                local color_key = ann.color and string.lower(ann.color) or nil
-                if ann.pageLabel ~= current_page then
-                    if current_page ~= nil then
-                        table.insert(lines, '---'); table.insert(lines, '')
-                    end
-                    table.insert(lines, string.format('### Page %s', ann.pageLabel or 'N/A')); table.insert(lines, '')
-                    current_page = ann.pageLabel
-                end
-                local custom_heading = color_key and color_headings_map[color_key] or nil
-                if custom_heading then table.insert(lines, custom_heading) end
+        local page_str = ann.pageLabel and #ann.pageLabel > 0 and ('p. ' .. ann.pageLabel) or nil
+        local author_str = ann.authorName and #ann.authorName > 0 and ('by ' .. ann.authorName) or nil
+        local metadata_parts = {}
+        if citekey then
+          table.insert(metadata_parts, '@' .. citekey)
+        end
+        if page_str then
+          table.insert(metadata_parts, page_str)
+        end
+        if author_str then
+          table.insert(metadata_parts, author_str)
+        end
+        local metadata_string = #metadata_parts > 0 and (' [' .. table.concat(metadata_parts, ', ') .. ']') or ''
 
-                local page_str = ann.pageLabel and #ann.pageLabel > 0 and ('p. ' .. ann.pageLabel) or nil
-                local author_str = ann.authorName and #ann.authorName > 0 and ('by ' .. ann.authorName) or nil
-                local metadata_parts = {}; if citekey then table.insert(metadata_parts, '@' .. citekey) end; if page_str then table.insert(metadata_parts, page_str) end; if author_str then table.insert(metadata_parts, author_str) end
-                local metadata_string = #metadata_parts > 0 and (' [' .. table.concat(metadata_parts, ', ') .. ']') or ''
+        local output_lines, added = format_single_annotation(ann, metadata_string, color_key)
+        for _, line_content in ipairs(output_lines) do
+          table.insert(lines, line_content)
+        end
+        if added then
+          table.insert(lines, '')
+        end
+      end
 
-                local output_lines, added = format_single_annotation(ann, metadata_string, color_key)
-                for _, line_content in ipairs(output_lines) do table.insert(lines, line_content) end
-                if added then table.insert(lines, '') end
-            end
+      -- ============================================
+      --  Mode 2: Group by Highlight Color
+      -- ============================================
+    elseif grouping_mode == 'highlight' then
+      -- We need to define the color order from default_annotation_color_headings
+      -- This ensures annotations are displayed in the same order as the colors were defined
+      local color_order = {
+        '#ffd400', -- Yellow
+        '#ff6666', -- Red / Pink
+        '#5fb236', -- Green
+        '#2ea8e5', -- Blue
+        '#a28ae5', -- Purple
+        '#e56eee', -- Magenta
+        '#f19837', -- Orange
+        '#aaaaaa', -- Grey
+        '#ffde5c', -- Alternate Yellow
+      }
 
-        -- ============================================
-        --  Mode 2: Group by Highlight Color
-        -- ============================================
-        elseif grouping_mode == 'highlight' then
-            local grouped_annotations = {}
-            local other_category_heading = "## Other Annotations"
+      -- Create color-to-index mapping for ordering
+      local color_index_map = {}
+      for idx, color in ipairs(color_order) do
+        color_index_map[string.lower(color)] = idx
+      end
 
-            -- Pass 1: Group annotations by heading (derived from color map)
-            for _, ann in ipairs(annotations) do
-                local color_key = ann.color and string.lower(ann.color) or nil
-                local heading = (color_key and color_headings_map[color_key]) or other_category_heading
-                if not grouped_annotations[heading] then grouped_annotations[heading] = {} end
-                table.insert(grouped_annotations[heading], ann) -- Store original ann object
-            end
+      -- Map from color to annotations and headings
+      local color_annotations_map = {}
+      local color_heading_lookup = {}
+      local unknown_colors = {}
+      local other_annotations = {}
 
-            -- Helper function to print a group's content
-            local function print_annotation_group(heading, group_annotations)
-                table.insert(lines, heading); table.insert(lines, '') -- Print category heading
-                for _, ann in ipairs(group_annotations) do -- Annotations already sorted by page/index
-                    local color_key = ann.color and string.lower(ann.color) or nil
-                    local page_str = ann.pageLabel and #ann.pageLabel > 0 and ('p. ' .. ann.pageLabel) or nil
-                    local author_str = ann.authorName and #ann.authorName > 0 and ('by ' .. ann.authorName) or nil
-                    local metadata_parts = {}; if citekey then table.insert(metadata_parts, '@' .. citekey) end; if page_str then table.insert(metadata_parts, page_str) end; if author_str then table.insert(metadata_parts, author_str) end
-                    local metadata_string = #metadata_parts > 0 and (' [' .. table.concat(metadata_parts, ', ') .. ']') or ''
-
-                    local output_lines, added = format_single_annotation(ann, metadata_string, color_key)
-                    for _, line_content in ipairs(output_lines) do table.insert(lines, line_content) end
-                    if added then table.insert(lines, '') end
-                end
-            end
-
-            -- Define the canonical order based on the *original default* structure
-            -- We use the actual default table defined at the top of the file
-            local canonical_heading_order = {}
-            local seen_headings_in_default = {}
-            -- Iterate through the original default table to establish order
-            for _, heading in pairs(default_annotation_color_headings) do
-                 -- Check if we've already added this heading (handles colors mapping to same heading)
-                 if not seen_headings_in_default[heading] then
-                      table.insert(canonical_heading_order, heading)
-                      seen_headings_in_default[heading] = true
-                 end
-            end
-
-            local printed_headings = {} -- Track printed headings
-            local first_heading_printed = false
-
-            -- Pass 2.1: Print groups based on canonical order
-            for _, heading in ipairs(canonical_heading_order) do
-                if grouped_annotations[heading] and #grouped_annotations[heading] > 0 then
-                    if first_heading_printed then table.insert(lines, '---'); table.insert(lines, '') end
-                    print_annotation_group(heading, grouped_annotations[heading])
-                    printed_headings[heading] = true
-                    first_heading_printed = true
-                end
-            end
-
-            -- Pass 2.2: Print any remaining groups (custom user headings not in defaults)
-            -- Iterate through the grouped annotations map. pairs() doesn't guarantee order here.
-            for heading, group_annotations in pairs(grouped_annotations) do
-                if not printed_headings[heading] and heading ~= other_category_heading then
-                    if first_heading_printed then table.insert(lines, '---'); table.insert(lines, '') end
-                    print_annotation_group(heading, group_annotations)
-                    printed_headings[heading] = true
-                    first_heading_printed = true
-                end
-            end
-
-            -- Pass 2.3: Print the "Other Annotations" group last if it exists
-            if grouped_annotations[other_category_heading] and #grouped_annotations[other_category_heading] > 0 then
-                 if first_heading_printed then table.insert(lines, '---'); table.insert(lines, '') end
-                 print_annotation_group(other_category_heading, grouped_annotations[other_category_heading])
-                 -- printed_headings[other_category_heading] = true -- Not strictly necessary to track
-                 -- first_heading_printed = true
-            end
+      -- Group annotations by their color
+      for _, ann in ipairs(annotations) do
+        local color_key = ann.color and string.lower(ann.color) or nil
+        if color_key and color_index_map[color_key] then
+          if not color_annotations_map[color_key] then
+            color_annotations_map[color_key] = {}
+            color_heading_lookup[color_key] = color_headings_map[color_key] or ('## Color: ' .. color_key)
+          end
+          table.insert(color_annotations_map[color_key], ann)
+        elseif color_key then
+          -- Unknown color but has a color
+          if not unknown_colors[color_key] then
+            unknown_colors[color_key] = {}
+          end
+          table.insert(unknown_colors[color_key], ann)
         else
-            table.insert(lines, string.format('> [Error] Invalid annotation_grouping mode: "%s"', grouping_mode))
+          -- No color information
+          table.insert(other_annotations, ann)
         end
+      end
+
+      -- Helper function to print a group's content
+      local function print_annotation_group(heading, group_annotations)
+        -- Only add the heading if headings are enabled
+        if show_headings then
+          table.insert(lines, heading)
+          table.insert(lines, '')
+        end
+
+        for _, ann in ipairs(group_annotations) do -- Annotations already sorted by page/index
+          local color_key = ann.color and string.lower(ann.color) or nil
+          local page_str = ann.pageLabel and #ann.pageLabel > 0 and ('p. ' .. ann.pageLabel) or nil
+          local author_str = ann.authorName and #ann.authorName > 0 and ('by ' .. ann.authorName) or nil
+          local metadata_parts = {}
+          if citekey then
+            table.insert(metadata_parts, '@' .. citekey)
+          end
+          if page_str then
+            table.insert(metadata_parts, page_str)
+          end
+          if author_str then
+            table.insert(metadata_parts, author_str)
+          end
+          local metadata_string = #metadata_parts > 0 and (' [' .. table.concat(metadata_parts, ', ') .. ']') or ''
+
+          local output_lines, added = format_single_annotation(ann, metadata_string, color_key)
+          for _, line_content in ipairs(output_lines) do
+            table.insert(lines, line_content)
+          end
+          if added then
+            table.insert(lines, '')
+          end
+        end
+      end
+
+      -- Print annotations in color order
+      local first_group_printed = false
+
+      -- First print annotations in the predefined color order
+      for _, color in ipairs(color_order) do
+        local color_key = string.lower(color)
+        if color_annotations_map[color_key] and #color_annotations_map[color_key] > 0 then
+          if first_group_printed then
+            table.insert(lines, '---')
+            table.insert(lines, '')
+          end
+          print_annotation_group(color_heading_lookup[color_key], color_annotations_map[color_key])
+          first_group_printed = true
+        end
+      end
+
+      -- Then print annotations with unknown colors
+      for color_key, anns in pairs(unknown_colors) do
+        if first_group_printed then
+          table.insert(lines, '---')
+          table.insert(lines, '')
+        end
+        local heading = color_headings_map[color_key] or ('## Unknown Color: ' .. color_key)
+        print_annotation_group(heading, anns)
+        first_group_printed = true
+      end
+
+      -- Finally print annotations with no color
+      if #other_annotations > 0 then
+        if first_group_printed then
+          table.insert(lines, '---')
+          table.insert(lines, '')
+        end
+        print_annotation_group('## Other Annotations', other_annotations)
+      end
+    else
+      table.insert(lines, string.format('> [Error] Invalid annotation_grouping mode: "%s"', grouping_mode))
     end
+  end
 
-    -- --- Create and open the floating window (code remains the same) ---
-    local buf = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_buf_set_option(buf, 'bufhidden', 'wipe')
-    vim.api.nvim_buf_set_option(buf, 'filetype', 'markdown')
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+  -- --- Create and open the floating window (code remains the same) ---
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(buf, 'bufhidden', 'wipe')
+  vim.api.nvim_buf_set_option(buf, 'filetype', 'markdown')
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.api.nvim_buf_set_option(buf, 'modifiable', false)
 
-    local width = math.floor(vim.api.nvim_get_option('columns') * 0.75)
-    local height = math.floor(vim.api.nvim_get_option('lines') * 0.75)
-    local row = math.floor((vim.api.nvim_get_option('lines') - height) / 2)
-    local col = math.floor((vim.api.nvim_get_option('columns') - width) / 2)
+  local width = math.floor(vim.api.nvim_get_option 'columns' * 0.75)
+  local height = math.floor(vim.api.nvim_get_option 'lines' * 0.75)
+  local row = math.floor((vim.api.nvim_get_option 'lines' - height) / 2)
+  local col = math.floor((vim.api.nvim_get_option 'columns' - width) / 2)
 
-    local winid = vim.api.nvim_open_win(buf, true, {
-        relative = 'editor', width = width, height = height, row = row, col = col,
-        style = 'minimal', border = 'rounded',
-        title = 'Zotero Annotations (' .. (citekey or item.key) .. ')', title_pos = 'center',
-    })
+  local winid = vim.api.nvim_open_win(buf, true, {
+    relative = 'editor',
+    width = width,
+    height = height,
+    row = row,
+    col = col,
+    style = 'minimal',
+    border = 'rounded',
+    title = 'Zotero Annotations (' .. (citekey or item.key) .. ')',
+    title_pos = 'center',
+  })
 
-    vim.api.nvim_buf_set_keymap(buf, 'n', 'q', '<cmd>close<CR>', { noremap = true, silent = true, desc = "Close Annotation Window" })
-    vim.api.nvim_buf_set_keymap(buf, 'n', '<Esc>', '<cmd>close<CR>', { noremap = true, silent = true, desc = "Close Annotation Window" })
+  vim.api.nvim_buf_set_keymap(
+    buf,
+    'n',
+    'q',
+    '<cmd>close<CR>',
+    { noremap = true, silent = true, desc = 'Close Annotation Window' }
+  )
+  vim.api.nvim_buf_set_keymap(
+    buf,
+    'n',
+    '<Esc>',
+    '<cmd>close<CR>',
+    { noremap = true, silent = true, desc = 'Close Annotation Window' }
+  )
 
-    if winid then
-        vim.api.nvim_set_option_value('conceallevel', 2, { win = winid })
-        vim.api.nvim_set_option_value('concealcursor', 'nc', { win = winid })
-    end
+  if winid then
+    vim.api.nvim_set_option_value('conceallevel', 2, { win = winid })
+    vim.api.nvim_set_option_value('concealcursor', 'nc', { win = winid })
+  end
 end
 --- Main entry point of the picker
 --- @param opts any
