@@ -30,7 +30,9 @@ local default_opts = {
   pdf_opener = nil,
   annotation_color_headings = default_annotation_color_headings,
   annotation_grouping = 'chronological', -- Options: 'chronological', 'highlight'
-  headings = 'True', -- Options true or false/ "On" or "Off"
+  headings = true, -- Options true or false/ "On" or "Off"
+  yaml = true,
+  info = true,
   -- specify options for different filetypes
   -- locate_bib can be a string or a function
   ft = {
@@ -274,12 +276,280 @@ local function make_entry(pre_entry)
   }
 end
 
+local function generate_yaml_frontmatter(item)
+  local lines = { '---' }
+
+  -- Add citekey
+  if item.citekey then
+    table.insert(lines, 'citekey: ' .. item.citekey)
+  end
+
+  -- Add aliases (title with authors)
+  if item.title and item.creators and #item.creators > 0 then
+    local authors_str = ''
+    if item.creators[1] and item.creators[1].lastName then
+      authors_str = item.creators[1].lastName
+      if #item.creators > 1 and item.creators[2].lastName then
+        authors_str = authors_str .. ' & ' .. item.creators[2].lastName
+      elseif #item.creators > 1 then
+        authors_str = authors_str .. ' et al.'
+      end
+    end
+
+    local year_str = item.year or ''
+    if year_str ~= '' then
+      year_str = ' (' .. year_str .. ')'
+    end
+
+    table.insert(lines, 'aliases:')
+    table.insert(lines, '- "' .. authors_str .. year_str .. ' ' .. item.title .. '"')
+  end
+
+  -- Add title
+  if item.title then
+    table.insert(lines, 'title: "' .. item.title .. '"')
+  end
+
+  -- Add authors list
+  if item.creators and #item.creators > 0 then
+    table.insert(lines, 'authors:')
+    for _, creator in ipairs(item.creators) do
+      if creator.firstName and creator.lastName then
+        table.insert(lines, '- ' .. creator.firstName .. ' ' .. creator.lastName)
+      elseif creator.lastName then
+        table.insert(lines, '- ' .. creator.lastName)
+      end
+    end
+  end
+
+  -- Add year
+  if item.year then
+    table.insert(lines, 'year: ' .. item.year)
+  end
+
+  -- Add item type
+  if item.itemType then
+    table.insert(lines, 'item-type: ' .. item.itemType)
+  end
+
+  -- Add publisher/journal
+  if item.publicationTitle then
+    table.insert(lines, 'publisher: "' .. item.publicationTitle .. '"')
+  elseif item.publisher then
+    table.insert(lines, 'publisher: "' .. item.publisher .. '"')
+  end
+
+  -- Add tags if available
+  if item.tags and #item.tags > 0 then
+    table.insert(lines, 'tags:')
+    for _, tag in ipairs(item.tags) do
+      table.insert(lines, '- ' .. tag)
+    end
+  end
+
+  -- Add DOI if available
+  if item.DOI then
+    table.insert(lines, 'doi: https://doi.org/' .. item.DOI)
+  end
+
+  -- Close YAML block
+  table.insert(lines, '---')
+  table.insert(lines, '') -- Add an empty line after YAML block
+
+  return lines
+end
+
+local function format_bibliography(item)
+  local bib = ''
+
+  -- Format authors
+  local authors = ''
+  if item.creators and #item.creators > 0 then
+    for i, creator in ipairs(item.creators) do
+      if creator.creatorType == 'author' then
+        if i > 1 then
+          authors = authors .. ', '
+        end
+        if creator.lastName and creator.firstName then
+          authors = authors .. creator.lastName .. ', ' .. creator.firstName:sub(1, 1) .. '.'
+        elseif creator.lastName then
+          authors = authors .. creator.lastName
+        end
+      end
+    end
+  end
+
+  -- Title with proper formatting
+  local title = item.title or ''
+
+  -- Publication details
+  local publication = item.publicationTitle or item.publisher or ''
+  local year = item.year or ''
+  local volume = item.volume or ''
+  local issue = item.issue or ''
+  local pages = item.pages or ''
+  local doi = item.DOI or ''
+
+  -- Format based on item type
+  if item.itemType == 'journalArticle' then
+    bib = authors .. ' (' .. year .. '). ' .. title .. '. *' .. publication .. '*'
+
+    if volume ~= '' then
+      bib = bib .. ', *' .. volume .. '*'
+      if issue ~= '' then
+        bib = bib .. '(' .. issue .. ')'
+      end
+    end
+
+    if pages ~= '' then
+      bib = bib .. ', ' .. pages
+    end
+
+    if doi ~= '' then
+      bib = bib .. '. [https://doi.org/' .. doi .. '](https://doi.org/' .. doi .. ')'
+    end
+  else
+    -- Default format for other item types
+    bib = authors .. ' (' .. year .. '). ' .. title
+
+    if publication ~= '' then
+      bib = bib .. '. *' .. publication .. '*'
+    end
+
+    if doi ~= '' then
+      bib = bib .. '. [https://doi.org/' .. doi .. '](https://doi.org/' .. doi .. ')'
+    end
+  end
+
+  return bib
+end
+
+-- Function to generate formatted Obsidian-style info
+local function generate_obsidian_info(item)
+  local lines = {}
+
+  -- Start info callout
+  table.insert(
+    lines,
+    '> [!info]- Info 🔗 [**Zotero**](zotero://select/library/items/'
+      .. item.key
+      .. ')'
+      .. (item.DOI and ' | [**DOI**](https://doi.org/' .. item.DOI .. ')' or '')
+  )
+
+  -- Add PDF link if available
+  if item.attachment and item.attachment.path then
+    local path = item.attachment.path
+    if item.attachment.link_mode == 1 and item.attachment.folder_name then -- Stored file
+      -- Construct a file path - adjust this to match your storage path format
+      local storage_path = vim.fn.expand(M.config.zotero_storage_path)
+      local pdf_path = 'file://' .. storage_path .. '/' .. item.attachment.folder_name
+      table.insert(lines, '> | [**PDF-1**](' .. pdf_path .. ')')
+    end
+  end
+
+  -- Bibliography
+  table.insert(lines, '>')
+  table.insert(lines, '>**Bibliography**: ' .. format_bibliography(item))
+  table.insert(lines, '> ')
+
+  -- Authors with wiki links
+  if item.creators and #item.creators > 0 then
+    local authors_links = {}
+    for _, creator in ipairs(item.creators) do
+      if creator.creatorType == 'author' and creator.firstName and creator.lastName then
+        local full_name = creator.firstName .. ' ' .. creator.lastName
+        table.insert(authors_links, '[[' .. full_name .. '|' .. full_name .. ']]')
+      end
+    end
+    if #authors_links > 0 then
+      table.insert(lines, '> **Authors**::  ' .. table.concat(authors_links, ',  '))
+      table.insert(lines, '> ')
+    end
+  end
+
+  -- Tags
+  if item.tags and #item.tags > 0 then
+    local tag_str = ''
+    for i, tag in ipairs(item.tags) do
+      tag_str = tag_str .. '#' .. tag:gsub('%s+', '-')
+      if i < #item.tags then
+        tag_str = tag_str .. ', '
+      end
+    end
+    table.insert(lines, '> **Tags**: ' .. tag_str)
+    table.insert(lines, '> ')
+  end
+
+  -- Collections (placeholder, would need additional query)
+  table.insert(lines, '> **Collections**:: ')
+  table.insert(lines, '>')
+
+  -- Page information
+  if item.pages then
+    local pages = item.pages
+    local first_page, last_page = pages:match '(%d+)%s*%-%s*(%d+)'
+    if first_page then
+      table.insert(lines, '> **First-page**:: ' .. first_page)
+      table.insert(lines, '> ')
+      local page_count = tonumber(last_page) - tonumber(first_page) + 1
+      table.insert(lines, '> **Page-count**:: ' .. page_count)
+      table.insert(lines, '> ')
+      -- Calculate estimated reading time (approx 2 minutes per page for academic papers)
+      local reading_time = page_count * 2
+      table.insert(lines, '> **Reading-time**:: ' .. reading_time .. ' minutes')
+    end
+  end
+
+  -- Abstract in a collapsible callout
+  if item.abstractNote then
+    table.insert(lines, '')
+    table.insert(lines, '> [!abstract]-')
+    table.insert(lines, '> ')
+    -- Split abstract by newlines and format each line
+    for _, line in ipairs(vim.split(item.abstractNote, '\n')) do
+      table.insert(lines, '> ' .. line)
+    end
+    table.insert(lines, '>')
+  end
+
+  return lines
+end
+
 local function display_annotations(annotations, item)
-  local lines = { '# Annotations for: ' .. (item.title or item.citekey or item.key), '' } -- Main Title
-  local color_headings_map = M.config.annotation_color_headings or {} -- Get the normalized map from config
-  local grouping_mode = M.config.annotation_grouping or 'chronological' -- Get grouping mode
-  local citekey = item.citekey or item.key -- Get the citation key for metadata
-  local show_headings = M.config.headings == 'on' or M.config.headings == true -- Check if headings should be shown
+  local color_headings_map = M.config.annotation_color_headings or {}
+  local grouping_mode = M.config.annotation_grouping or 'chronological'
+  local citekey = item.citekey or item.key
+  local show_headings = M.config.headings == 'on' or M.config.headings == true
+  local show_yaml = M.config.yaml == 'on' or M.config.yaml == true
+  local show_info = M.config.info == 'on' or M.config.info == true
+  
+  -- Initialize lines as an empty table
+  local lines = {}
+  
+  if show_yaml then
+    -- Add YAML frontmatter to lines
+    local yaml_lines = generate_yaml_frontmatter(item)
+    for _, line in ipairs(yaml_lines) do
+      table.insert(lines, line)
+    end
+  end
+
+  if show_info then
+    -- Add the Obsidian-style info section
+    local info_lines = generate_obsidian_info(item)
+    for _, line in ipairs(info_lines) do
+      table.insert(lines, line)
+    end
+  end
+  -- Add the annotation title
+  table.insert(lines, '## Annotations for: ' .. (item.title or item.citekey or item.key))
+  table.insert(lines, '') -- Empty line after title
+
+  -- Rest of the function for annotations remains the same
+
+  -- Check if headings should be shown
+  -- Check if headings should be shown
 
   if #annotations == 0 then
     table.insert(lines, '> No annotations found for this item.')
@@ -577,24 +847,14 @@ M.picker = function(opts)
             return
           end
           local itemKey = entry.value.key
-          local item_data = entry.value -- Pass the whole item data for context
+          local item_data = entry.value
 
           -- Call the database function
           local annotations, err = database.get_annotations(itemKey)
 
-          -- Optional: Close the picker window before showing annotations
-          -- actions.close(prompt_bufnr)
-
-          if err then
-            -- Notification already handled in get_annotations
-            -- vim.notify('[zotero] Failed to get annotations: ' .. err, vim.log.levels.ERROR)
-            return
-          end
-
           -- Call the display function
           display_annotations(annotations, item_data)
         end)
-        -- End of NEW mapping
 
         return true
       end,

@@ -81,6 +81,45 @@ local query_annotations_template = [[
   ORDER BY CAST(itemAnnotations.pageLabel AS INTEGER), itemAnnotations.sortIndex; -- Order by page, then position
 ]]
 
+
+local query_tags = [[
+    SELECT
+      DISTINCT items.key,
+      tags.name AS tag_name
+    FROM
+      items
+      INNER JOIN itemTags ON itemTags.itemID = items.itemID
+      INNER JOIN tags ON tags.tagID = itemTags.tagID
+]]
+
+
+local query_abstract = [[
+    SELECT
+      items.key,
+      itemDataValues.value AS abstractText
+    FROM
+      items
+      INNER JOIN itemData ON itemData.itemID = items.itemID
+      INNER JOIN itemDataValues ON itemDataValues.valueID = itemData.valueID
+      INNER JOIN fields ON fields.fieldID = itemData.fieldID
+    WHERE
+      fields.fieldName = 'abstractNote'
+]]
+
+local query_pages = [[
+    SELECT
+      items.key,
+      itemDataValues.value AS pages
+    FROM
+      items
+      INNER JOIN itemData ON itemData.itemID = items.itemID
+      INNER JOIN itemDataValues ON itemDataValues.valueID = itemData.valueID
+      INNER JOIN fields ON fields.fieldID = itemData.fieldID
+    WHERE
+      fields.fieldName = 'pages'
+]]
+
+
 -- Add this new function to fetch annotations
 function M.get_annotations(itemKey)
   if not M.db then
@@ -116,12 +155,16 @@ function M.get_items()
   local raw_items = {}
   local sql_items = M.db:eval(query_items)
   local sql_creators = M.db:eval(query_creators)
+  local sql_tags = M.db:eval(query_tags)
+  local sql_abstract = M.db:eval(query_abstract)
+  local sql_pages = M.db:eval(query_pages)
   local sql_bbt = M.bbt:eval(query_bbt)
 
-  if sql_items == nil or sql_creators == nil or sql_bbt == nil then
+  if sql_items == nil or sql_creators == nil or sql_tags == nil or sql_bbt == nil then
     vim.notify_once('[zotero] could not query database.', vim.log.levels.WARN, {})
     return {}
   end
+  
   local bbt_citekeys = {}
   for _, v in pairs(sql_bbt) do
     bbt_citekeys[v.itemKey] = v.citationKey
@@ -129,7 +172,7 @@ function M.get_items()
 
   for _, v in pairs(sql_items) do
     if raw_items[v.key] == nil then
-      raw_items[v.key] = { creators = {}, attachment = {}, key = v.key }
+      raw_items[v.key] = { creators = {}, attachment = {}, key = v.key, tags = {} }
     end
     raw_items[v.key][v.fieldName] = v.value
     raw_items[v.key].itemType = v.typeName
@@ -137,12 +180,36 @@ function M.get_items()
       raw_items[v.key].attachment.path = v.attachment_path
       raw_items[v.key].attachment.content_type = v.attachment_content_type
       raw_items[v.key].attachment.link_mode = v.attachment_link_mode
+      -- Extract folder name for creating file path
+      raw_items[v.key].attachment.folder_name = v.folder_name
     end
     if v.fieldName == 'DOI' then
       raw_items[v.key].DOI = v.value
     end
   end
 
+  -- Add abstract data
+  for _, v in pairs(sql_abstract) do
+    if raw_items[v.key] then
+      raw_items[v.key].abstractNote = v.abstractText
+    end
+  end
+  
+  -- Add pages data
+  for _, v in pairs(sql_pages) do
+    if raw_items[v.key] then
+      raw_items[v.key].pages = v.pages
+    end
+  end
+
+  -- Add tags
+  for _, v in pairs(sql_tags) do
+    if raw_items[v.key] ~= nil then
+      table.insert(raw_items[v.key].tags, v.tag_name)
+    end
+  end
+
+  -- Add creators
   for _, v in pairs(sql_creators) do
     if raw_items[v.key] ~= nil then
       raw_items[v.key].creators[v.orderIndex + 1] =
@@ -159,6 +226,5 @@ function M.get_items()
   end
   return items
 end
-
 return M
 
