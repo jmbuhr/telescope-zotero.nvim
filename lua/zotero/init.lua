@@ -523,10 +523,10 @@ local function display_annotations(annotations, item)
   local show_headings = M.config.headings == 'on' or M.config.headings == true
   local show_yaml = M.config.yaml == 'on' or M.config.yaml == true
   local show_info = M.config.info == 'on' or M.config.info == true
-  
+
   -- Initialize lines as an empty table
   local lines = {}
-  
+
   if show_yaml then
     -- Add YAML frontmatter to lines
     local yaml_lines = generate_yaml_frontmatter(item)
@@ -558,14 +558,31 @@ local function display_annotations(annotations, item)
     local function format_single_annotation(ann, metadata_string, color_key)
       local output_lines = {}
       local annotation_lines_added = false
+
+      -- Handle comment with potential newlines
       if ann.comment and #ann.comment > 0 then
-        table.insert(output_lines, string.format('- *%s*%s', ann.comment, metadata_string))
+        local comment_lines = vim.split(ann.comment, '\n')
+        -- Add the first line with metadata
+        table.insert(output_lines, string.format('- *%s*%s', comment_lines[1], metadata_string))
+        -- Add any additional comment lines with proper indentation
+        for i = 2, #comment_lines do
+          table.insert(output_lines, string.format('  *%s*', comment_lines[i]))
+        end
         annotation_lines_added = true
       end
+
+      -- Handle text with potential newlines
       if ann.text and #ann.text > 0 then
-        table.insert(output_lines, string.format('> %s%s', ann.text, metadata_string))
+        local text_lines = vim.split(ann.text, '\n')
+        -- Add the first line with metadata
+        table.insert(output_lines, string.format('> %s%s', text_lines[1], metadata_string))
+        -- Add any additional text lines with proper blockquote formatting
+        for i = 2, #text_lines do
+          table.insert(output_lines, string.format('> %s', text_lines[i]))
+        end
         annotation_lines_added = true
       end
+
       if not annotation_lines_added then
         table.insert(
           output_lines,
