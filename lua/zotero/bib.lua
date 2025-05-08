@@ -65,6 +65,11 @@ M.locate_asciidoc_bib = function()
       M['asciidoc.cached_bib'] = location
       return M['asciidoc.cached_bib']
     end
+    local location = string.match(line, [[:bibtex-file:[ "']*(.+)["' ]*]])
+    if location then
+      M['asciidoc.cached_bib'] = location
+      return M['asciidoc.cached_bib']
+    end
   end
 
   -- no bib locally defined, default to `references.bib`
