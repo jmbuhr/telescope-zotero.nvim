@@ -21,7 +21,23 @@ M.locate_quarto_bib = function()
   -- no bib locally defined
   -- test for quarto project-wide definition
   local fname = vim.api.nvim_buf_get_name(0)
-  local root = require('lspconfig.util').root_pattern '_quarto.yml'(fname)
+
+  -- Iterate up the directory tree to find the _quarto.yml file
+  local function find_quarto_root(start_path)
+    local current = vim.fn.fnamemodify(start_path, ':p:h')
+    local previous = nil
+    while current ~= previous do
+      local config_file = current .. '/_quarto.yml'
+      if vim.fn.filereadable(config_file) == 1 then
+        return current
+      end
+      previous = current
+      current = vim.fn.fnamemodify(current, ':h')
+    end
+    return nil
+  end
+
+  local root = find_quarto_root(fname)
   if root then
     local file = root .. '/_quarto.yml'
     for line in io.lines(file) do
