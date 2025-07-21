@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.5.2...v1.6.0) (2025-07-21)
+
+
+### Features
+
+* support asciidoc via [#28](https://github.com/jmbuhr/telescope-zotero.nvim/issues/28) from crisbour/main ([9ad44d4](https://github.com/jmbuhr/telescope-zotero.nvim/commit/9ad44d42d1fbf8bb80feb84f75f8d56d567526ca))
+
 ## [1.5.2](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.5.1...v1.5.2) (2025-02-27)
 
 
