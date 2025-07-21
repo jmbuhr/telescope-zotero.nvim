@@ -34,6 +34,48 @@ M.locate_quarto_bib = function()
   end
 end
 
+local function resolve_includes(file_path, resolved_lines)
+  local lines = vim.fn.readfile(file_path)
+  for _, line in ipairs(lines) do
+    local include_path = string.match(line, "^include::(.-)%[%]$")
+    if include_path then
+      local full_path = vim.fn.fnamemodify(include_path, ":p")
+      resolve_includes(full_path, resolved_lines)
+    else
+      table.insert(resolved_lines, line)
+    end
+  end
+end
+
+M.locate_asciidoc_bib = function()
+  if M['asciidoc.cached_bib'] then
+    return M['asciidoc.cached_bib']
+  end
+
+  local current_file = vim.fn.expand("%:p")
+  local resolved_lines = {}
+  resolve_includes(current_file, resolved_lines)
+
+  local temp_file = vim.fn.tempname()
+  vim.fn.writefile(resolved_lines, temp_file)
+
+  for _, line in ipairs(resolved_lines) do
+    local location = string.match(line, [[:bibliography-database:[ "']*(.+)["' ]*]])
+    if location then
+      M['asciidoc.cached_bib'] = location
+      return M['asciidoc.cached_bib']
+    end
+    local location = string.match(line, [[:bibtex-file:[ "']*(.+)["' ]*]])
+    if location then
+      M['asciidoc.cached_bib'] = location
+      return M['asciidoc.cached_bib']
+    end
+  end
+
+  -- no bib locally defined, default to `references.bib`
+  return 'references.bib'
+end
+
 M.locate_tex_bib = function()
   local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   for _, line in ipairs(lines) do

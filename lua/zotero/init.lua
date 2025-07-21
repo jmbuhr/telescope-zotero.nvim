@@ -35,6 +35,12 @@ local default_opts = {
       end,
       locate_bib = bib.locate_tex_bib,
     },
+    asciidoc = {
+      insert_key_formatter = function(citekey)
+        return 'cite:[' .. citekey .. ']'
+      end,
+      locate_bib = bib.locate_asciidoc_bib,
+    },
     -- fallback for unlisted filetypes
     default = {
       insert_key_formatter = function(citekey)
