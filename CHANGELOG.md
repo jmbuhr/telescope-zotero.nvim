@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.6.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.5.2...v1.6.0) (2025-08-14)
+
+
+### Features
+
+* add support for orgmode ([aa5c74d](https://github.com/jmbuhr/telescope-zotero.nvim/commit/aa5c74db4fdc435052d21f7ad8b8035218db2064))
+* add support for orgmode ([02212b6](https://github.com/jmbuhr/telescope-zotero.nvim/commit/02212b6d0b2e581b9176eaa84b22448731d89db4))
+* add support for orgmode via [#33](https://github.com/jmbuhr/telescope-zotero.nvim/issues/33) from [@cvigilv](https://github.com/cvigilv) ([aa5c74d](https://github.com/jmbuhr/telescope-zotero.nvim/commit/aa5c74db4fdc435052d21f7ad8b8035218db2064))
+* add support for typst ([#34](https://github.com/jmbuhr/telescope-zotero.nvim/issues/34)) ([5f7848f](https://github.com/jmbuhr/telescope-zotero.nvim/commit/5f7848fbc17401995b28ec792b72eb27bcbcbd11))
+* support asciidoc via [#28](https://github.com/jmbuhr/telescope-zotero.nvim/issues/28) from crisbour/main ([9ad44d4](https://github.com/jmbuhr/telescope-zotero.nvim/commit/9ad44d42d1fbf8bb80feb84f75f8d56d567526ca))
+
 ## [1.5.2](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.5.1...v1.5.2) (2025-02-27)
 
 
