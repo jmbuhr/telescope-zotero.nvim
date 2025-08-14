@@ -101,7 +101,7 @@ M.locate_typst_bib = function()
   for _, line in ipairs(lines) do
     local location = line:match("^#bibliography%((.+)%)")
     if location then
-      return location
+      return location:sub(2,-2)
     end
   end
   return "references.bib"
