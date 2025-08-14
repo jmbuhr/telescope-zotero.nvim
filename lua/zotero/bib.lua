@@ -37,9 +37,9 @@ end
 local function resolve_includes(file_path, resolved_lines)
   local lines = vim.fn.readfile(file_path)
   for _, line in ipairs(lines) do
-    local include_path = string.match(line, "^include::(.-)%[%]$")
+    local include_path = string.match(line, '^include::(.-)%[%]$')
     if include_path then
-      local full_path = vim.fn.fnamemodify(include_path, ":p")
+      local full_path = vim.fn.fnamemodify(include_path, ':p')
       resolve_includes(full_path, resolved_lines)
     else
       table.insert(resolved_lines, line)
@@ -52,7 +52,7 @@ M.locate_asciidoc_bib = function()
     return M['asciidoc.cached_bib']
   end
 
-  local current_file = vim.fn.expand("%:p")
+  local current_file = vim.fn.expand '%:p'
   local resolved_lines = {}
   resolve_includes(current_file, resolved_lines)
 
@@ -94,6 +94,17 @@ M.locate_tex_bib = function()
       end
     end
   end
+end
+
+M.locate_org_bib = function()
+  local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  for _, line in ipairs(lines) do
+    local location = line:match("#%+BIBLIOGRAPHY:%s*(.+)") or line:match("#%+bibliography:%s*(.+)")
+    if location then
+      return location
+    end
+  end
+  return "references.bib"
 end
 
 M.entry_to_bib_entry = function(entry)
