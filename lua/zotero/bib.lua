@@ -96,6 +96,17 @@ M.locate_tex_bib = function()
   end
 end
 
+M.locate_typst_bib = function()
+  local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  for _, line in ipairs(lines) do
+    local location = line:match("^#bibliography%((.+)%)")
+    if location then
+      return location:sub(2,-2)
+    end
+  end
+  return "references.bib"
+end
+
 M.locate_org_bib = function()
   local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   for _, line in ipairs(lines) do
