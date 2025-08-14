@@ -41,6 +41,12 @@ local default_opts = {
       end,
       locate_bib = bib.locate_asciidoc_bib,
     },
+    typst = {
+      insert_key_formatter = function(citekey)
+        return '@' .. citekey
+      end,
+      locate_bib = bib.locate_typst_bib,
+    },
     -- fallback for unlisted filetypes
     default = {
       insert_key_formatter = function(citekey)
