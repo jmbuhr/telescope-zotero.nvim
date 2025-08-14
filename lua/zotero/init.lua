@@ -47,6 +47,12 @@ local default_opts = {
       end,
       locate_bib = bib.locate_typst_bib,
     },
+    org = {
+      insert_key_formatter = function(citekey)
+        return '[cite:@' .. citekey .. ']'
+      end,
+      locate_bib = bib.locate_org_bib,
+    },
     -- fallback for unlisted filetypes
     default = {
       insert_key_formatter = function(citekey)
