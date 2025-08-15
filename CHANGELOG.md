@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.6.0...v1.7.0) (2025-08-15)
+
+
+### Features
+
+* create missing bib on selection ([#36](https://github.com/jmbuhr/telescope-zotero.nvim/issues/36)) ([10dff99](https://github.com/jmbuhr/telescope-zotero.nvim/commit/10dff99a2aaceaa21db25646efe598aa10acdba8))
+
 ## [1.6.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.5.2...v1.6.0) (2025-08-14)
 
 
