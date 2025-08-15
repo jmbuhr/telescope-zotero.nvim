@@ -174,9 +174,12 @@ local get_items = function()
 end
 
 local insert_entry = function(entry, insert_key_fn, locate_bib_fn)
+  -- Insert selected citation in file
   local citekey = entry.value.citekey
   local insert_key = insert_key_fn(citekey)
   vim.api.nvim_put({ insert_key }, '', false, true)
+
+  -- Get bib file path
   local bib_path = nil
   if type(locate_bib_fn) == 'string' then
     bib_path = locate_bib_fn
@@ -189,15 +192,24 @@ local insert_entry = function(entry, insert_key_fn, locate_bib_fn)
   end
   bib_path = vim.fn.expand(bib_path)
 
-  -- check if is already in the bib file
-  for line in io.lines(bib_path) do
+  -- Check if bib file exists at bib_path
+  local ok, lines = pcall(io.lines, bib_path)
+  if not ok then
+    if vim.fn.confirm("Bibliography file missing. Create '" .. bib_path .. "'?", '&Yes\n&No', 1) == 1 then
+      vim.fn.writefile({}, bib_path)
+      lines = io.lines(bib_path)
+    end
+  end
+
+  -- Check if citation has already been placed in bib file at bib_path
+  for line in lines do
     if string.match(line, '^@') and string.match(line, citekey) then
       return
     end
   end
 
+  -- Otherwise, append the entry to the bib file at bib_path
   local bib_entry = bib.entry_to_bib_entry(entry)
-  -- otherwise append the entry to the bib file at bib_path
   local file = io.open(bib_path, 'a')
   if file == nil then
     vim.notify('Could not open ' .. bib_path .. ' for appending', vim.log.levels.ERROR)
