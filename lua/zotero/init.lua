@@ -11,22 +11,41 @@ local database = require 'zotero.database'
 
 local M = {}
 
+---@class Zotero.Configuration
+---@field zotero_db_path string File path to Zotero SQLite database
+---@field better_bibtex_db_path string File path to BetterBibTeX SQLite database
+---@field zotero_storage_path string File path to Zotero's Storage directory
+---@field pdf_opener string|nil Program to use for opening PDFs
+---@field picker Zotero.Picker.Configuration Configuration for the picker
+---@field ft Zotero.FileType[] Table with filetype configuration
+
+---@class Zotero.Picker.Configuration
+---@field with_icons boolean Whether the picker uses NerdFont icons
+---@field hlgroups Zotero.Picker.Highlights Highlight groups for picker elements
+---
+---@class Zotero.Picker.Highlights
+---@field icons string Higlight groups used for icons
+---@field author_year string Higlight groups used for author and publishing year
+---@field title string Higlight groups used for title
+
+---@class Zotero.FileType
+---@field insert_key_formatted function Function that formats the entry to insert
+---@field locate_bib string|function File path or function that locates reference bib file
+
+---@type Zotero.Configuration
 local default_opts = {
   zotero_db_path = '~/Zotero/zotero.sqlite',
   better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
   zotero_storage_path = '~/Zotero/storage',
   pdf_opener = nil,
-  -- Picker options
   picker = {
     with_icons = true,
     hlgroups = {
       icons = 'SpecialChar',
-      author_date = 'Comment',
+      author_year = 'Comment',
       title = 'Title',
     },
   },
-  -- specify options for different filetypes
-  -- locate_bib can be a string or a function
   ft = {
     quarto = {
       insert_key_formatter = function(citekey)
@@ -64,7 +83,6 @@ local default_opts = {
       end,
       locate_bib = bib.locate_org_bib,
     },
-    -- fallback for unlisted filetypes
     default = {
       insert_key_formatter = function(citekey)
         return '@' .. citekey
@@ -73,14 +91,17 @@ local default_opts = {
     },
   },
 }
-M.config = default_opts
 
+---@param opts Zotero.Configuration User configuration
 M.setup = function(opts)
   M.config = vim.tbl_deep_extend('force', default_opts, opts or {})
 end
 
+---Gets available attachments for Zotero biliography item
+---@param item table Zotero bilbiography item
 local function get_attachment_options(item)
   local options = {}
+  -- Add option to open PDF...
   if item.attachment and item.attachment.path then
     table.insert(options, {
       type = 'pdf',
@@ -88,19 +109,23 @@ local function get_attachment_options(item)
       link_mode = item.attachment.link_mode,
     })
   end
+  -- DOI...
   if item.DOI then
     table.insert(options, { type = 'doi', url = 'https://doi.org/' .. item.DOI })
   end
-  -- Add option to open in Zotero
+  -- and option to open entry in Zotero.
   table.insert(options, { type = 'zotero', key = item.key })
   return options
 end
 
-local function open_url(url, file_type)
+---Opens URL of Zotero item
+---@param url string The URL to open
+---@param filetype string|nil Filetype of URL to open (defaults to system's opener program)
+local function open_url(url, filetype)
   local open_cmd
-  if file_type == 'pdf' and M.config.pdf_opener then
+  if filetype == 'pdf' and M.config.pdf_opener then
     -- Use the custom PDF opener if specified
-    vim.notify('Opening PDF with: ' .. M.config.pdf_opener .. ' ' .. vim.fn.shellescape(url), vim.log.levels.INFO)
+    vim.notify('[zotero] Opening PDF with: ' .. M.config.pdf_opener .. ' ' .. vim.fn.shellescape(url), vim.log.levels.INFO)
     vim.fn.jobstart({ M.config.pdf_opener, url }, { detach = true })
   elseif vim.fn.has 'win32' == 1 then
     open_cmd = 'start'
@@ -109,15 +134,19 @@ local function open_url(url, file_type)
   else -- Assume Unix
     open_cmd = 'xdg-open'
   end
-  vim.notify('Opening URL with: ' .. open_cmd .. ' ' .. vim.fn.shellescape(url), vim.log.levels.INFO)
+  vim.notify('[zotero] Opening URL with: ' .. open_cmd .. ' ' .. vim.fn.shellescape(url), vim.log.levels.INFO)
   vim.fn.jobstart({ open_cmd, url }, { detach = true })
 end
 
+---Opens item in Zotero
+---@param item_key table The key of the Zotero bibliography item to open
 local function open_in_zotero(item_key)
   local zotero_url = 'zotero://select/library/items/' .. item_key
   open_url(zotero_url)
 end
 
+---Opens attachments for a Zotero bibliography item
+---@param item table The Zotero bibliography item containing attachment information
 local function open_attachment(item)
   local options = get_attachment_options(item)
 
@@ -134,16 +163,16 @@ local function open_attachment(item)
         if #matches > 0 then
           file_path = matches[1] -- Use the first match
         else
-          vim.notify('File not found: ' .. search_path, vim.log.levels.ERROR)
+          vim.notify('[zotero] File not found: ' .. search_path, vim.log.levels.ERROR)
           return
         end
       end
       -- Debug: Print the full path
-      vim.notify('Attempting to open PDF: ' .. file_path, vim.log.levels.INFO)
+      vim.notify('[zotero] Attempting to open PDF: ' .. file_path, vim.log.levels.INFO)
       if file_path ~= 0 then
         open_url(file_path, 'pdf')
       else
-        vim.notify('File not found: ' .. file_path, vim.log.levels.ERROR)
+        vim.notify('[zotero] File not found: ' .. file_path, vim.log.levels.ERROR)
       end
     elseif choice.type == 'doi' then
       vim.ui.open(choice.url)
@@ -172,10 +201,12 @@ local function open_attachment(item)
     }, execute_option)
   else
     -- If there are no options, notify the user
-    vim.notify('No attachments or links available for this item', vim.log.levels.INFO)
+    vim.notify('[zotero] No attachments or links available for this item', vim.log.levels.INFO)
   end
 end
 
+---Gets items from database
+---@return table items Zotero bilbiography item
 local get_items = function()
   local success = database.connect(M.config)
   if success then
@@ -185,6 +216,10 @@ local get_items = function()
   end
 end
 
+---Extract year for date entry
+---@param entry table Citation entry to insert
+---@param insert_key_fn function Function that formats citation entry
+---@param locate_bib_fn function Functoin that locate references bib file
 local insert_entry = function(entry, insert_key_fn, locate_bib_fn)
   -- Insert selected citation in file
   local citekey = entry.value.citekey
@@ -199,7 +234,7 @@ local insert_entry = function(entry, insert_key_fn, locate_bib_fn)
     bib_path = locate_bib_fn()
   end
   if bib_path == nil then
-    vim.notify_once('Could not find a bibliography file', vim.log.levels.WARN)
+    vim.notify_once('[zotero] Could not find a bibliography file', vim.log.levels.WARN)
     return
   end
   bib_path = vim.fn.expand(bib_path)
@@ -224,7 +259,7 @@ local insert_entry = function(entry, insert_key_fn, locate_bib_fn)
   local bib_entry = bib.entry_to_bib_entry(entry)
   local file = io.open(bib_path, 'a')
   if file == nil then
-    vim.notify('Could not open ' .. bib_path .. ' for appending', vim.log.levels.ERROR)
+    vim.notify('[zotero] Could not open ' .. bib_path .. ' for appending', vim.log.levels.ERROR)
     return
   end
   file:write(bib_entry)
@@ -232,12 +267,15 @@ local insert_entry = function(entry, insert_key_fn, locate_bib_fn)
   vim.print('wrote ' .. citekey .. ' to ' .. bib_path)
 end
 
+---Extract year for date entry
+---@param date string Date to parse
+---@return string year Year of date entry or ' ¿? ' is not found
 local function extract_year(date)
   local year = date:match '(%d%d%d%d)'
   if year ~= nil then
     return year
   else
-    return 'NA'
+    return ' ¿? '
   end
 end
 
@@ -252,7 +290,7 @@ local function make_entry(pre_entry)
 
   -- Check if entry has attachments
   local options = get_attachment_options(pre_entry)
-  local empty_icon = M.config.with_icons and '  ' or ' '
+  local empty_icon = ' '
   local icon_tbl = { empty_icon, empty_icon, empty_icon }
   for _, entry in ipairs(options) do
     if entry.type == 'zotero' then
@@ -278,7 +316,7 @@ local function make_entry(pre_entry)
   local function make_display(_)
     return displayer {
       { icon, M.config.picker.hlgroups.icons },
-      { last_name .. ', ' .. year, M.config.picker.hlgroups.author_date },
+      { last_name .. ', ' .. year, M.config.picker.hlgroups.author_year },
       { pre_entry.title, M.config.picker.hlgroups.title },
     }
   end
@@ -298,11 +336,11 @@ local function make_entry(pre_entry)
   }
 end
 
---- Main entry point of the picker
---- @param opts any
+---Main entry point of the picker
+---@param opts Zotero.Configuration User configuration
 M.picker = function(opts)
   opts = opts or {}
-  local ft_options = M.config.ft[vim.bo.filetype] or M.config.ft.default
+  local ft_options = M.config.ft[vim.bo.filetype] or M.config.ft.default --[[@as Zotero.FileType]]
   pickers
     .new(opts, {
       prompt_title = 'Zotero library',
