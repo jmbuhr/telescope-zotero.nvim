@@ -1,9 +1,11 @@
 local finders = require 'telescope.finders'
 local pickers = require 'telescope.pickers'
+local entry_display = require 'telescope.pickers.entry_display'
 local previewers = require 'telescope.previewers'
 local conf = require('telescope.config').values
 local action_state = require 'telescope.actions.state'
 local actions = require 'telescope.actions'
+
 local bib = require 'zotero.bib'
 local database = require 'zotero.database'
 
@@ -14,6 +16,15 @@ local default_opts = {
   better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
   zotero_storage_path = '~/Zotero/storage',
   pdf_opener = nil,
+  -- Picker options
+  picker = {
+    with_icons = true,
+    hlgroups = {
+      icons = 'SpecialChar',
+      author_date = 'Comment',
+      title = 'Title',
+    },
+  },
   -- specify options for different filetypes
   -- locate_bib can be a string or a function
   ft = {
@@ -65,7 +76,7 @@ local default_opts = {
 M.config = default_opts
 
 M.setup = function(opts)
-  M.config = vim.tbl_extend('force', default_opts, opts or {})
+  M.config = vim.tbl_deep_extend('force', default_opts, opts or {})
 end
 
 local function get_attachment_options(item)
@@ -101,6 +112,7 @@ local function open_url(url, file_type)
   vim.notify('Opening URL with: ' .. open_cmd .. ' ' .. vim.fn.shellescape(url), vim.log.levels.INFO)
   vim.fn.jobstart({ open_cmd, url }, { detach = true })
 end
+
 local function open_in_zotero(item_key)
   local zotero_url = 'zotero://select/library/items/' .. item_key
   open_url(zotero_url)
@@ -230,6 +242,7 @@ local function extract_year(date)
 end
 
 local function make_entry(pre_entry)
+  -- Process entry
   local creators = pre_entry.creators or {}
   local author = creators[1] or {}
   local last_name = author.lastName or 'NA'
@@ -237,29 +250,45 @@ local function make_entry(pre_entry)
   year = extract_year(year)
   pre_entry.year = year
 
+  -- Check if entry has attachments
   local options = get_attachment_options(pre_entry)
-  local icon = ''
-  if #options > 2 then
-    icon = ' ' -- Icon for both PDF and DOI available
-  elseif #options == 2 then
-    icon = options[1].type == 'pdf' and '󰈙 ' or '󰖟 '
-  else
-    icon = ' ' -- Two spaces for blank icon
+  local empty_icon = M.config.with_icons and '  ' or ' '
+  local icon_tbl = { empty_icon, empty_icon, empty_icon }
+  for _, entry in ipairs(options) do
+    if entry.type == 'zotero' then
+      icon_tbl[1] = M.config.picker.with_icons and '' or 'Z'
+    elseif entry.type == 'doi' then
+      icon_tbl[2] = M.config.picker.with_icons and '󰖟' or 'D'
+    elseif entry.type == 'pdf' then
+      icon_tbl[3] = M.config.picker.with_icons and '󰈙' or 'P'
+    end
   end
-  local display_value = string.format('%s%s, %s) %s', icon, last_name, year, pre_entry.title)
-  local highlight = {
-    { { 0, #icon }, 'SpecialChar' },
-    { { #icon, #icon + #last_name + #year + 3 }, 'Comment' },
-    { { #icon + #last_name + 2, #icon + #year + #last_name + 2 }, '@markup.underline' },
+  local icon = table.concat(icon_tbl, '')
+
+  -- Create display maker
+  local displayer = entry_display.create {
+    separator = ' ',
+    items = {
+      { width = 3 },
+      { width = 24, right_justify = true },
+      { remaining = true },
+    },
   }
 
   local function make_display(_)
-    return display_value, highlight
+    return displayer {
+      { icon, M.config.picker.hlgroups.icons },
+      { last_name .. ', ' .. year, M.config.picker.hlgroups.author_date },
+      { pre_entry.title, M.config.picker.hlgroups.title },
+    }
   end
+
+  -- Return entry maker
+  local ordinal = string.format('%s %s %s %s', icon, last_name, year, pre_entry.title)
   return {
     value = pre_entry,
     display = make_display,
-    ordinal = display_value,
+    ordinal = ordinal,
     preview_command = function(entry, bufnr)
       local bib_entry = bib.entry_to_bib_entry(entry)
       local lines = vim.split(bib_entry, '\n')
