@@ -2,6 +2,16 @@
 
 List references from your local [Zotero](https://www.zotero.org/) library and add them to a bib file.
 
+<div align="center">
+<img width="912" height="740" alt="Telescope zotero" src="https://github.com/user-attachments/assets/ea7e84c9-3d36-467c-88e9-39bb0f4d9bb5" />
+  <p><em>Telescope zotero picker</em></p>
+</div>
+
+<div align="center">
+  <img width="912" height="740" alt="Open entry propmt" src="https://github.com/user-attachments/assets/db759bfb-6239-4d39-b797-9e19d99967c2" />
+  <p><em>Open entry prompt (Control-O over the current entry)</em></p>
+</div>
+
 This does **not** provide autompletion in the document itself, as this is handled by https://github.com/jmbuhr/cmp-pandoc-references
 for entries already in `references.bib`. The intended workflow separates already used references from new ones imported from Zotero
 via this new plugin.
@@ -102,7 +112,6 @@ opts = {
   },
 }
 ```
-
 
 For adding support for a specific filetype, please open a PR request.
 
