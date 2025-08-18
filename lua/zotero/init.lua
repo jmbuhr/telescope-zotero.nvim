@@ -112,20 +112,33 @@ local function open_attachment(item)
   local function execute_option(choice)
     if choice.type == 'pdf' then
       local file_path = choice.path
-      if choice.link_mode == 1 then -- 1 typically means stored file
+      -- Handle both 'storage:' and 'attachments:' prefixes
+      if choice.link_mode == 1 or file_path:match('^attachments:') or file_path:match('^storage:') then
         local zotero_storage = vim.fn.expand(M.config.zotero_storage_path)
-        -- Remove the ':storage' prefix from the path
+        -- Remove both possible prefixes from the path
         file_path = file_path:gsub('^storage:', '')
+        file_path = file_path:gsub('^attachments:', '')
+        vim.notify('Searching for file: ' .. file_path .. ' in ' .. zotero_storage, vim.log.levels.INFO)
         -- Use a wildcard to search for the PDF file in subdirectories
         local search_path = zotero_storage .. '/*/' .. file_path
         local matches = vim.fn.glob(search_path, true, true) -- Returns a list of matching files
+        
+        -- If no matches found, try direct path
+        if #matches == 0 then
+          -- Try direct path without wildcard
+          search_path = zotero_storage .. '/' .. file_path
+          matches = vim.fn.glob(search_path, true, true)
+        end
+        
         if #matches > 0 then
           file_path = matches[1] -- Use the first match
+          vim.notify('Found file at: ' .. file_path, vim.log.levels.INFO)
         else
-          vim.notify('File not found: ' .. search_path, vim.log.levels.ERROR)
+          vim.notify('File not found. Tried paths: ' .. search_path, vim.log.levels.ERROR)
           return
         end
       end
+      
       -- Debug: Print the full path
       vim.notify('Attempting to open PDF: ' .. file_path, vim.log.levels.INFO)
       if file_path ~= 0 then
