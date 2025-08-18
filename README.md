@@ -56,6 +56,7 @@ Add to your telescope config, e.g. in lazy.nvim
 
 Default options:
 ```lua
+---@type Zotero.Configuration
 {
   -- File system options
   zotero_db_path        = '~/Zotero/zotero.sqlite',
