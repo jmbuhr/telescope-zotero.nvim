@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.7.0...v1.8.0) (2025-08-22)
+
+
+### Features
+
+* **picker:** enhance entry display with icons and highlighting ([0972f1f](https://github.com/jmbuhr/telescope-zotero.nvim/commit/0972f1f3e5e608c483adc18d94e066680dee0aa5))
+
 ## [1.7.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.6.0...v1.7.0) (2025-08-15)
 
 
