@@ -92,6 +92,8 @@ local default_opts = {
   },
 }
 
+M.config = default_opts
+
 ---@param opts Zotero.Configuration User configuration
 M.setup = function(opts)
   M.config = vim.tbl_deep_extend('force', default_opts, opts or {})
