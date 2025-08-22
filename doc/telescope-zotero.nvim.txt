@@ -1,4 +1,4 @@
-*telescope-zotero.nvim.txt*   For Neovim >= 0.9.5  Last change: 2025 August 15
+*telescope-zotero.nvim.txt*   For Neovim >= 0.9.5  Last change: 2025 August 22
 
 ==============================================================================
 Table of Contents                    *telescope-zotero.nvim-table-of-contents*
@@ -6,6 +6,7 @@ Table of Contents                    *telescope-zotero.nvim-table-of-contents*
 1. telescope-zotero.nvim         |telescope-zotero.nvim-telescope-zotero.nvim|
   - Requirements    |telescope-zotero.nvim-telescope-zotero.nvim-requirements|
   - Setup                  |telescope-zotero.nvim-telescope-zotero.nvim-setup|
+  - Supported filetypes|telescope-zotero.nvim-telescope-zotero.nvim-supported-filetypes|
   - Demo                    |telescope-zotero.nvim-telescope-zotero.nvim-demo|
   - Inspiration      |telescope-zotero.nvim-telescope-zotero.nvim-inspiration|
 2. Links                                         |telescope-zotero.nvim-links|
@@ -15,6 +16,8 @@ Table of Contents                    *telescope-zotero.nvim-table-of-contents*
 
 List references from your local Zotero <https://www.zotero.org/> library and
 add them to a bib file.
+
+
 
 This does **not** provide autompletion in the document itself, as this is
 handled by https://github.com/jmbuhr/cmp-pandoc-references for entries already
@@ -62,7 +65,77 @@ Add to your telescope config, e.g. in lazy.nvim
 <
 
 Default options:
-<https://github.com/jmbuhr/telescope-zotero.nvim/blob/main/lua/zotero/init.lua#L12>
+
+>lua
+    ---@type Zotero.Configuration
+    {
+      -- File system options
+      zotero_db_path        = '~/Zotero/zotero.sqlite',
+      better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
+      zotero_storage_path   = '~/Zotero/storage',
+      pdf_opener            = nil,
+    
+      -- Picker options
+      picker = {
+        with_icons = true,
+        hlgroups = {
+          icons       = 'SpecialChar',
+          author_date = 'Comment',
+          title       = 'Title',
+        },
+      },
+    
+      -- Filetype options (refer to next section)
+      ft = { ... }
+    }
+<
+
+
+SUPPORTED FILETYPES*telescope-zotero.nvim-telescope-zotero.nvim-supported-filetypes*
+
+`telescope-zotero.nvim` supports formatting and references detection for the
+following filetypes:
+
+  ------------------------------------------------------------------------------------------
+  Filetype           Format                           Reference (fallback)
+  ------------------ -------------------------------- --------------------------------------
+  Quarto             bibliography: <path>             N/A
+
+  AsciiDoc           :bibliography-database: <path>   references.bib
+                     or :bibtex-file: <path>          
+
+  TeX/LaTeX          \bibliography{<path>} or         N/A
+                     \addbibresource{<path>}          
+
+  Typst              #bibliography(<path>)            references.bib
+
+  Org                #+BIBLIOGRAPHY: <path> or        references.bib
+                     #+bibliography: <path>           
+  ------------------------------------------------------------------------------------------
+For adding support for your filetype, you can add it to the `ft` table found in
+the options. Entries in the table accept two parameters:
+
+- `insert_key_formatter`, a function that converts a `citekey` into a citation.
+- `locate_bib`, a function that locates the references bib file used in the current buffer.
+
+For example, we can add support for `text` filetype as follows:
+
+>lua
+    opts = {
+      fts = {
+        text = {
+          insert_key_formatter = function(citekey)
+            return '[citation:' .. citekey .. ']'
+          end,
+          locate_bib = function()
+            -- You function that locates the reference file in the current buffer
+          end
+        },
+      },
+    }
+<
+
+For adding support for a specific filetype, please open a PR request.
 
 
 DEMO                        *telescope-zotero.nvim-telescope-zotero.nvim-demo*
@@ -75,7 +148,7 @@ Video (https://www.youtube.com/watch?v=_o5SkTW67do):
 INSPIRATION          *telescope-zotero.nvim-telescope-zotero.nvim-inspiration*
 
 This extension is inspired by the following plugins that all do an amazing job,
-but not quite what I need. Depending on your needs, you should have a look at
+but not quite what I need. Depending on your needs, you should take a look at
 those:
 
 - zotcite <https://github.com/jalvesaq/zotcite> provides omnicompletion for zotero items in Quarto, Rmarkdown etc., but requires additional dependencies and uses a custom pandoc lua filter instead of a references.bib file
