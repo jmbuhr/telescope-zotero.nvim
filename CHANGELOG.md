@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.8.0...v1.8.1) (2025-08-22)
+
+
+### Bug Fixes
+
+* use default options of setup is not called ([0a6be32](https://github.com/jmbuhr/telescope-zotero.nvim/commit/0a6be32dbbdb92d0827a601ac441ebf639ec7fa7))
+
 ## [1.8.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.7.0...v1.8.0) (2025-08-22)
 
 
