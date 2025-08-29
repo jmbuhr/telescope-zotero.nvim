@@ -29,27 +29,59 @@ local query_bbt = [[
     citationkey
 ]]
 
-local query_items = [[
-    SELECT
-      DISTINCT items.key, items.itemID,
-      fields.fieldName,
-      parentItemDataValues.value,
-      itemTypes.typeName,
-      itemAttachments.path AS attachment_path,
-      itemAttachments.contentType AS attachment_content_type,
-      itemAttachments.linkMode AS attachment_link_mode,
-      -- Fetch the folder name from the itemAttachments table
-      SUBSTR(itemAttachments.path, INSTR(itemAttachments.path, ':') + 1) AS folder_name
-    FROM
-      items
-      INNER JOIN itemData ON itemData.itemID = items.itemID
-      INNER JOIN itemDataValues ON itemData.valueID = itemDataValues.valueID
-      INNER JOIN itemData as parentItemData ON parentItemData.itemID = items.itemID
-      INNER JOIN itemDataValues as parentItemDataValues ON parentItemDataValues.valueID = parentItemData.valueID
-      INNER JOIN fields ON fields.fieldID = parentItemData.fieldID
-      INNER JOIN itemTypes ON itemTypes.itemTypeID = items.itemTypeID
-      LEFT JOIN itemAttachments ON items.itemID = itemAttachments.parentItemID AND itemAttachments.contentType = 'application/pdf'
-]]
+local function get_query_items(collection)
+  if collection == nil then
+    return [[
+        SELECT
+          DISTINCT items.key, items.itemID,
+          fields.fieldName,
+          parentItemDataValues.value,
+          itemTypes.typeName,
+          itemAttachments.path AS attachment_path,
+          itemAttachments.contentType AS attachment_content_type,
+          itemAttachments.linkMode AS attachment_link_mode,
+          -- Fetch the folder name from the itemAttachments table
+          SUBSTR(itemAttachments.path, INSTR(itemAttachments.path, ':') + 1) AS folder_name
+        FROM
+          items
+          INNER JOIN itemData ON itemData.itemID = items.itemID
+          INNER JOIN itemDataValues ON itemData.valueID = itemDataValues.valueID
+          INNER JOIN itemData as parentItemData ON parentItemData.itemID = items.itemID
+          INNER JOIN itemDataValues as parentItemDataValues ON parentItemDataValues.valueID = parentItemData.valueID
+          INNER JOIN fields ON fields.fieldID = parentItemData.fieldID
+          INNER JOIN itemTypes ON itemTypes.itemTypeID = items.itemTypeID
+          LEFT JOIN itemAttachments ON items.itemID = itemAttachments.parentItemID AND itemAttachments.contentType = 'application/pdf'
+    ]]
+  else
+    return [[
+        SELECT
+          DISTINCT items.key, items.itemID,
+          fields.fieldName,
+          parentItemDataValues.value,
+          itemTypes.typeName,
+          itemAttachments.path AS attachment_path,
+          itemAttachments.contentType AS attachment_content_type,
+          itemAttachments.linkMode AS attachment_link_mode,
+          -- Fetch the folder name from the itemAttachments table
+          SUBSTR(itemAttachments.path, INSTR(itemAttachments.path, ':') + 1) AS folder_name
+        FROM
+          items
+          INNER JOIN collectionItems ON collectionItems.itemID = items.itemID
+          INNER JOIN collections ON collections.collectionID = collectionItems.collectionID
+          INNER JOIN itemData ON itemData.itemID = items.itemID
+          INNER JOIN itemDataValues ON itemData.valueID = itemDataValues.valueID
+          INNER JOIN itemData as parentItemData ON parentItemData.itemID = items.itemID
+          INNER JOIN itemDataValues as parentItemDataValues ON parentItemDataValues.valueID = parentItemData.valueID
+          INNER JOIN fields ON fields.fieldID = parentItemData.fieldID
+          INNER JOIN itemTypes ON itemTypes.itemTypeID = items.itemTypeID
+          LEFT JOIN itemAttachments ON items.itemID = itemAttachments.parentItemID AND itemAttachments.contentType = 'application/pdf'
+          WHERE
+            collectionName = ']] .. collection .. [['
+    ]]
+  end
+end
+
+
 local query_creators = [[
     SELECT
       DISTINCT items.key,
@@ -65,9 +97,10 @@ local query_creators = [[
       INNER JOIN creatorTypes ON itemCreators.creatorTypeID = creatorTypes.creatorTypeID
     ]]
 
-function M.get_items()
+function M.get_items(collection)
   local items = {}
   local raw_items = {}
+  local query_items = get_query_items(collection)
   local sql_items = M.db:eval(query_items)
   local sql_creators = M.db:eval(query_creators)
   local sql_bbt = M.bbt:eval(query_bbt)
