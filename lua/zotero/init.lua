@@ -18,6 +18,7 @@ local M = {}
 ---@field pdf_opener string|nil Program to use for opening PDFs
 ---@field picker Zotero.Picker.Configuration Configuration for the picker
 ---@field ft Zotero.FileType[] Table with filetype configuration
+---@field collection string? Table with filetype configuration
 
 ---@class Zotero.Picker.Configuration
 ---@field with_icons boolean Whether the picker uses NerdFont icons
@@ -38,6 +39,7 @@ local default_opts = {
   better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
   zotero_storage_path = '~/Zotero/storage',
   pdf_opener = nil,
+  collection = nil,
   picker = {
     with_icons = true,
     hlgroups = {
@@ -209,10 +211,10 @@ end
 
 ---Gets items from database
 ---@return table items Zotero bilbiography item
-local get_items = function()
+local get_items = function(collection)
   local success = database.connect(M.config)
   if success then
-    return database.get_items()
+    return database.get_items(collection)
   else
     return {}
   end
@@ -347,7 +349,7 @@ M.picker = function(opts)
     .new(opts, {
       prompt_title = 'Zotero library',
       finder = finders.new_table {
-        results = get_items(),
+        results = get_items(M.config.collection),
         entry_maker = make_entry,
       },
       sorter = conf.generic_sorter(opts),
