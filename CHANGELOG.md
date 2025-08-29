@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.8.1...v1.9.0) (2025-08-29)
+
+
+### Features
+
+* filter by collection name ([#42](https://github.com/jmbuhr/telescope-zotero.nvim/issues/42)) ([6953004](https://github.com/jmbuhr/telescope-zotero.nvim/commit/6953004b91b68ccdded0f12b2f839dca7ccea5ad))
+
 ## [1.8.1](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.8.0...v1.8.1) (2025-08-22)
 
 
