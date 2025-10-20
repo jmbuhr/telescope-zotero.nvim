@@ -52,7 +52,6 @@ end
 
 local function resolve_includes(file_path, resolved_lines)
   local lines = vim.fn.readfile(file_path)
-  -- TODO: Avoid infinite loop by putting paths checked in a HashMap
   for _, line in ipairs(lines) do
     local include_path = string.match(line, '^include::(.-)%[%]$')
     if include_path then
