@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.9.0...v1.10.0) (2025-10-20)
+
+
+### Features
+
+* LaTeX bibliography search fixup to work with more complex projects ([#45](https://github.com/jmbuhr/telescope-zotero.nvim/issues/45)) ([eda62fc](https://github.com/jmbuhr/telescope-zotero.nvim/commit/eda62fc79dd07ddad5616645176eac5fec84b6c3))
+
 ## [1.9.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.8.1...v1.9.0) (2025-08-29)
 
 
