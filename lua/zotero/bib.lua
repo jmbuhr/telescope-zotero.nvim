@@ -48,6 +48,9 @@ M.locate_quarto_bib = function()
       end
     end
   end
+
+  -- default to `references.bib`
+  return 'references.bib'
 end
 
 local function resolve_includes(file_path, resolved_lines)
