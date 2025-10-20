@@ -92,7 +92,7 @@ M.locate_asciidoc_bib = function()
   return 'references.bib'
 end
 
-local function locate_tex_bib_of_file(tex_file)
+local function locate_tex_bib_of_file(tex_file, recur_depth)
   -- 1. Check if bibliography is included in this file
   local tex_file_dir = vim.fn.fnamemodify(tex_file, ":h")
   local tex_lines = vim.fn.readfile(tex_file)
@@ -127,6 +127,12 @@ local function locate_tex_bib_of_file(tex_file)
     end
   end
 
+  -- 3. Prevent infinite recursion
+  if recur_depth >= 20 then
+    print("Warning: Reached maximum recursion depth (" .. recur_depth .. ") while searching for bibliography in TeX files. Current file: " .. tex_file)
+    return nil
+  end
+
   -- If no bib include was found in current file, try to find the main tex file (asssuming project is in git repo),
   -- searching backwards for include until we hit begin/end `document`.
   -- Then do the same as above to extract the file, or default to `references.bib` in the root repo dir
@@ -155,7 +161,7 @@ local function locate_tex_bib_of_file(tex_file)
       local include = string.match(line, [[\input{[ "']*([^'"\{\}]+)["' ]*}]])
       -- 5. Recursively search for bibliography in files that are including the callee
       if include and include == basename_noextension then
-        local reference_location = locate_tex_bib_of_file(new_tex_file)
+        local reference_location = locate_tex_bib_of_file(new_tex_file, recur_depth+1)
         if reference_location then
           return reference_location
         end
@@ -169,7 +175,7 @@ end
 
 M.locate_tex_bib = function()
   local tex_file = vim.fn.expand("%:p")
-  local bib_file = locate_tex_bib_of_file(tex_file)
+  local bib_file = locate_tex_bib_of_file(tex_file, 0)
   if bib_file then
     return bib_file
   end
