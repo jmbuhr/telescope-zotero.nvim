@@ -19,6 +19,7 @@ local M = {}
 ---@field picker Zotero.Picker.Configuration Configuration for the picker
 ---@field ft Zotero.FileType[] Table with filetype configuration
 ---@field collection string? Table with filetype configuration
+---@field on_selection fun(entry: table): string|table|nil Optional callback when a Zotero entry is picked
 
 ---@class Zotero.Picker.Configuration
 ---@field with_icons boolean Whether the picker uses NerdFont icons
@@ -40,6 +41,7 @@ local default_opts = {
   zotero_storage_path = '~/Zotero/storage',
   pdf_opener = nil,
   collection = nil,
+  on_selection = nil,
   picker = {
     with_icons = true,
     hlgroups = {
@@ -223,11 +225,26 @@ end
 ---Extract year for date entry
 ---@param entry table Citation entry to insert
 ---@param insert_key_fn function Function that formats citation entry
----@param locate_bib_fn function Functoin that locate references bib file
-local insert_entry = function(entry, insert_key_fn, locate_bib_fn)
+---@param locate_bib_fn function Function that locates references bib file
+---@param on_selection_cb function|nil Optional callback invoked when selecting entry
+local insert_entry = function(entry, insert_key_fn, locate_bib_fn, on_selection_cb)
   -- Insert selected citation in file
   local citekey = entry.value.citekey
-  local insert_key = insert_key_fn(citekey)
+  local insert_key
+  if type(on_selection_cb) == 'function' then
+    local ok, result = pcall(on_selection_cb, entry.value)
+    if not ok then
+      vim.notify(('[zotero] on_selection callback failed for %s: %s'):format(citekey, result), vim.log.levels.ERROR)
+    elseif type(result) == 'string' then
+      insert_key = result
+    elseif type(result) == 'table' and type(result.insert_text) == 'string' then
+      insert_key = result.insert_text
+      if result.note_path then
+        vim.notify('[zotero] note created at ' .. result.note_path, vim.log.levels.INFO)
+      end
+    end
+  end
+  insert_key = insert_key or insert_key_fn(citekey)
   vim.api.nvim_put({ insert_key }, '', false, true)
 
   -- Get bib file path
@@ -358,7 +375,8 @@ M.picker = function(opts)
         actions.select_default:replace(function()
           actions.close(prompt_bufnr)
           local entry = action_state.get_selected_entry()
-          insert_entry(entry, ft_options.insert_key_formatter, ft_options.locate_bib)
+          local on_selection_cb = opts.on_selection or M.config.on_selection
+          insert_entry(entry, ft_options.insert_key_formatter, ft_options.locate_bib, on_selection_cb)
         end)
         -- Update the mapping to open PDF or DOI
         map('i', '<C-o>', function()
