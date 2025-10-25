@@ -74,6 +74,8 @@ Default options:
       better_bibtex_db_path = '~/Zotero/better-bibtex.sqlite',
       zotero_storage_path   = '~/Zotero/storage',
       pdf_opener            = nil,
+      collection            = nil,
+      on_selection          = nil,
     
       -- Picker options
       picker = {
@@ -136,6 +138,79 @@ For example, we can add support for `text` filetype as follows:
 <
 
 For adding support for a specific filetype, please open a PR request.
+
+CUSTOM ACTIONS       *telescope-zotero.nvim-telescope-zotero.nvim-custom-actions*
+
+Provide an `on_selection` callback to run custom logic every time an entry is
+picked. The callback receives the full entry table. Returning a string inserts
+that value. Returning a table lets you specify `insert_text` and optional
+metadata such as a `note_path` that will be relayed via a notification. The
+callback can be configured globally with `setup` or supplied per invocation by
+passing `on_selection` in the picker options.
+
+>lua
+    require('zotero').setup {
+      on_selection = function(entry)
+        local note_dir = vim.fn.expand '~/Notes/Zotero'
+        vim.fn.mkdir(note_dir, 'p')
+
+        local title = entry.title or entry.citekey
+        local authors = {}
+        for _, creator in ipairs(entry.creators or {}) do
+          if creator.lastName then
+            local name = creator.lastName
+            if creator.firstName then
+              name = creator.firstName .. ' ' .. name
+            end
+            table.insert(authors, name)
+          end
+        end
+
+        local note_path = string.format('%s/%s.md', note_dir, entry.citekey)
+        local lines = {
+          ('# %s (%s)'):format(title, entry.year or ''),
+          '',
+          ('- Authors: %s'):format(table.concat(authors, ', ')),
+          ('- Citekey: %s'):format(entry.citekey),
+          '',
+          '## Summary',
+          '',
+        }
+        vim.fn.writefile(lines, note_path)
+
+        return {
+          insert_text = '@' .. entry.citekey,
+        note_path = note_path,
+      }
+    end,
+  }
+<
+
+To keep the default picker unchanged and trigger the callback only for a
+dedicated mapping, pass `on_selection` when calling the extension:
+
+>lua
+    local telescope = require 'telescope'
+
+    vim.keymap.set('n', '<leader>fz', telescope.extensions.zotero.zotero, { desc = '[z]otero' })
+
+    vim.keymap.set('n', '<leader>fn', function()
+      telescope.extensions.zotero.zotero {
+        on_selection = function(entry)
+          local note_dir = vim.fn.expand '~/Notes/Zotero'
+          vim.fn.mkdir(note_dir, 'p')
+
+          local note_path = string.format('%s/%s.md', note_dir, entry.citekey)
+          vim.fn.writefile({ '# ' .. (entry.title or entry.citekey) }, note_path)
+
+          return {
+            insert_text = '@' .. entry.citekey,
+            note_path = note_path,
+          }
+        end,
+      }
+    end, { desc = 'Zotero note' })
+<
 
 
 DEMO                        *telescope-zotero.nvim-telescope-zotero.nvim-demo*
