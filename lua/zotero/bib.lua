@@ -48,6 +48,9 @@ M.locate_quarto_bib = function()
       end
     end
   end
+
+  -- default to `references.bib`
+  return 'references.bib'
 end
 
 local function resolve_includes(file_path, resolved_lines)
@@ -179,7 +182,15 @@ M.locate_tex_bib = function()
   if bib_file then
     return bib_file
   end
-  return tex_file_dir .. '/references.bib'
+  -- Fallback: if no bib file is found in the current file or any of the including files,
+  -- default to `references.bib` in the root dir of the project (or current file if not in a git repo)
+  local tex_file_dir = vim.fn.fnamemodify(tex_file, ":h")
+  -- Find root dir from `git rev-parse --show-toplevel`
+  local root_dir = vim.fn.systemlist('git rev-parse --show-toplevel 2>/dev/null')[1]
+  if not root_dir or root_dir == '' then
+    root_dir = tex_file_dir
+  end
+  return root_dir .. '/references.bib'
 end
 
 M.locate_typst_bib = function()
