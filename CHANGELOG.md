@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.1](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.10.0...v1.10.1) (2026-03-27)
+
+
+### Bug Fixes
+
+* fallback references.bib location for quarto and latex ([#53](https://github.com/jmbuhr/telescope-zotero.nvim/issues/53)) ([1ac1711](https://github.com/jmbuhr/telescope-zotero.nvim/commit/1ac1711d1a17ec58610a71cd37e1e39deb604ec3))
+
 ## [1.10.0](https://github.com/jmbuhr/telescope-zotero.nvim/compare/v1.9.0...v1.10.0) (2025-10-20)
 
 
