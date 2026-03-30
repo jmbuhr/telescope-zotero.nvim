@@ -2,21 +2,24 @@ local sqlite = require 'sqlite.db'
 
 local M = {}
 
-local function connect(path)
+local function connect(path, optional)
   path = vim.fn.expand(path)
   local ok, db = pcall(sqlite.open, sqlite, 'file:' .. path .. '?immutable=1', { open_mode = 'ro' })
   if ok then
     return db
   else
-    vim.notify_once(('[zotero] could not open database at %s.'):format(path))
+    if not optional then
+      vim.notify_once(('[zotero] could not open database at %s.'):format(path))
+    end
     return nil
   end
 end
 
 M.connect = function(opts)
-  M.db = connect(opts.zotero_db_path)
-  M.bbt = connect(opts.better_bibtex_db_path)
-  if M.db == nil or M.bbt == nil then
+  M.db = connect(opts.zotero_db_path, false)
+  -- BBT database is optional: Zotero 8+ migrates citation keys into zotero.sqlite
+  M.bbt = connect(opts.better_bibtex_db_path, true)
+  if M.db == nil then
     return false
   end
   return true
@@ -27,6 +30,20 @@ local query_bbt = [[
     itemKey, citationKey
   FROM
     citationkey
+]]
+
+-- Zotero 8+: citation keys are stored natively in zotero.sqlite
+local query_native_citekeys = [[
+  SELECT
+    items.key AS itemKey,
+    itemDataValues.value AS citationKey
+  FROM
+    items
+    INNER JOIN itemData ON itemData.itemID = items.itemID
+    INNER JOIN fields ON fields.fieldID = itemData.fieldID
+    INNER JOIN itemDataValues ON itemDataValues.valueID = itemData.valueID
+  WHERE
+    fields.fieldName = 'citationKey'
 ]]
 
 local function get_query_items(collection)
@@ -103,15 +120,30 @@ function M.get_items(collection)
   local query_items = get_query_items(collection)
   local sql_items = M.db:eval(query_items)
   local sql_creators = M.db:eval(query_creators)
-  local sql_bbt = M.bbt:eval(query_bbt)
 
-  if sql_items == nil or sql_creators == nil or sql_bbt == nil then
+  if sql_items == nil or sql_creators == nil then
     vim.notify_once('[zotero] could not query database.', vim.log.levels.WARN, {})
     return {}
   end
+
   local bbt_citekeys = {}
-  for _, v in pairs(sql_bbt) do
-    bbt_citekeys[v.itemKey] = v.citationKey
+  -- Zotero 8+: read citation keys stored natively in zotero.sqlite
+  local sql_native = M.db:eval(query_native_citekeys)
+  if sql_native ~= nil then
+    for _, v in pairs(sql_native) do
+      bbt_citekeys[v.itemKey] = v.citationKey
+    end
+  end
+  -- Zotero 7: read citation keys from the Better BibTeX database (overrides native if present)
+  if M.bbt ~= nil then
+    local ok, sql_bbt = pcall(function()
+      return M.bbt:eval(query_bbt)
+    end)
+    if ok and sql_bbt ~= nil then
+      for _, v in pairs(sql_bbt) do
+        bbt_citekeys[v.itemKey] = v.citationKey
+      end
+    end
   end
 
   for _, v in pairs(sql_items) do
